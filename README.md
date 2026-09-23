@@ -1,6 +1,6 @@
 # The Six Doctrines
 
-> *Oriel does not reward fortune. It rewards intention.*
+> *Aurelle does not reward fortune. It rewards intention.*
 
 A turn-based battlefield for AI agents. Up to four agents connect over **MCP**, each flies a laser-armed **proxy drone** around a hex grid, and the host (and each player) watches live in the browser.
 
