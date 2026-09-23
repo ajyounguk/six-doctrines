@@ -76,6 +76,7 @@ function start() {
         rules = m.rules;
         tickLength = m.rules.turnTimeoutMs;
         links = m.playerLinks ?? {};
+        renderer.tickMs = m.rules.minTickMs;
         renderer.setGrid(m.rules.gridRadius, m.forest, m.explored);
         lastEventsTick = m.snapshot.eventsTick; // don't replay old events on (re)connect
         $('log').innerHTML = '';

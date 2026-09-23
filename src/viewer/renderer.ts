@@ -59,6 +59,8 @@ export class Renderer {
   private zoom = 0.3;
   private targetZoom: number | null = null;
   follow = false;
+  /** Minimum tick length; move animations shrink to fit inside it at fast tick rates. */
+  tickMs = 600;
 
   private snap: Snapshot | null = null;
   private myProxyId: string | null = null;
@@ -356,7 +358,7 @@ export class Renderer {
 
     for (const e of events) {
       if (e.type === 'move' && e.path.length > 1) {
-        const dur = Math.min(700, 120 + 70 * (e.path.length - 1));
+        const dur = this.moveDuration(e.path.length - 1);
         moveEnd = Math.max(moveEnd, dur);
         this.anims.set(e.proxyId, { path: e.path.map((h) => hexToPixel(h, S)), start: now, dur });
         this.facing.set(e.proxyId, dirAngle(e.direction));
@@ -365,7 +367,7 @@ export class Renderer {
       }
       if (e.type === 'move' && e.blockedBy && e.blockedAt) {
         const at = hexToPixel(e.blockedAt, S);
-        this.addEffect(now + Math.min(700, 120 + 70 * (e.path.length - 1)), 500, (ctx, t) => {
+        this.addEffect(now + this.moveDuration(e.path.length - 1), 500, (ctx, t) => {
           const p = this.toScreen(at.x, at.y);
           ctx.globalAlpha = 1 - t;
           ctx.strokeStyle = C.danger;
@@ -491,6 +493,10 @@ export class Renderer {
       }
     }
     this.dirty = true;
+  }
+
+  private moveDuration(steps: number) {
+    return Math.min(700, 120 + 70 * steps, this.tickMs * 0.85);
   }
 
   private addEffect(start: number, dur: number, draw: Effect['draw']) {
