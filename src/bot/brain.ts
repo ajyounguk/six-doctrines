@@ -24,6 +24,8 @@ export interface BotInput {
   lastScanTick: number;
   /** Per-proxy number so bots pick different exploration waypoints. */
   seed: number;
+  /** Last tick's move was stopped by another proxy (blocked or contested hex). */
+  blockedByProxy?: boolean;
 }
 
 /** Tiny binary min-heap for A*. */
@@ -111,6 +113,19 @@ function hash01(a: number, b: number): number {
 
 export function decideBotAction(b: BotInput): Action {
   const budget = Math.min(b.maxMove, b.energy - 3);
+
+  // 0. Bumped into another proxy last tick: sidestep, or two bots chasing the same hex
+  //    would block each other forever. The direction varies by bot and tick.
+  if (b.blockedByProxy && budget >= 1) {
+    const start = Math.floor(hash01(b.tick, b.seed) * 6);
+    for (let i = 0; i < 6; i++) {
+      const dir = DIRECTIONS[(start + i) % 6];
+      const next = neighbor(b.pos, dir);
+      if (hexLength(next) <= b.gridRadius && !b.knownForest.has(hexKey(next))) {
+        return { type: 'move', direction: dir, distance: Math.min(2, budget) };
+      }
+    }
+  }
 
   // 1. Fire at a fresh sighting that's lined up and in range.
   if (b.laserReady) {

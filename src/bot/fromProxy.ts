@@ -21,5 +21,6 @@ export function botInputFromProxy(game: Game, t: ProxyDrone): BotInput {
     enemies: [...t.seenProxies.values()].map((s) => ({ at: s.pos, seenTick: s.tick })),
     lastScanTick: lastScan?.tick ?? -99,
     seed: t.joinOrder * 7919,
+    blockedByProxy: game.lastEvents.some((e) => e.type === 'move' && e.proxyId === t.id && (e.blockedBy === 'proxy' || e.blockedBy === 'collision')),
   };
 }

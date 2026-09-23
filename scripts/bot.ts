@@ -47,6 +47,7 @@ const maxScan = num(rules.actions.scan, /radius \(1-(\d+)\)/);
 let forest = new Set<string>();
 let lastScanTick = -99;
 let playedTick = 0;
+let blockedByProxy = false;
 
 // Plays forever, match after match, until you stop it (Ctrl+C).
 for (;;) {
@@ -78,6 +79,7 @@ for (;;) {
     enemies: known.proxies.map((t: any) => ({ at: { q: t.q, r: t.r }, seenTick: match.tick - t.seen_ticks_ago })),
     lastScanTick,
     seed: [...name].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) | 0,
+    blockedByProxy,
   };
   const action: Action = decideBotAction(input);
   if (action.type === 'scan') lastScanTick = match.tick;
@@ -85,6 +87,7 @@ for (;;) {
   try {
     const { type, ...args } = action;
     const report = await call(type, args);
+    blockedByProxy = report.moved?.blocked_by === 'proxy' || report.moved?.blocked_by === 'collision';
     console.log(`t${report.resolved_tick}: ${report.summary}`);
   } catch (e) {
     console.log(`t${match.tick}: ${(e as Error).message}`);
