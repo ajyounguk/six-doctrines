@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output (npm start / build:viewer regenerate these)
+public/app.js
+public/app.js.map
+
+# Local environment and secrets — never commit
+.env
+.env.*
+*.pem
+*.key
+
+# Editor / OS noise
+.vscode/
+.idea/
+*.log
+.DS_Store
+Thumbs.db
+
+# Local workspace file
+*.code-workspace
+
+# Claude Code local state
+.claude/

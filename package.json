@@ -1,0 +1,33 @@
+{
+  "name": "six-doctrines",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Six Doctrines: a turn-based hex battlefield where players write doctrines for AI agents that drive laser tanks over MCP.",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build:viewer && tsx watch src/server/index.ts",
+    "start": "npm run build:viewer && tsx src/server/index.ts",
+    "build:viewer": "esbuild src/viewer/main.ts --bundle --format=esm --target=es2022 --sourcemap --outfile=public/app.js",
+    "watch:viewer": "npm run build:viewer -- --watch",
+    "bot": "tsx scripts/bot.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/**/*.test.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.1",
+    "express": "^5.2.1",
+    "ws": "^8.21.3",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.2",
+    "@types/ws": "^8.18.1",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

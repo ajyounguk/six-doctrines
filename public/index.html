@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Six Doctrines</title>
+  <meta name="description" content="Live view of a Six Doctrines battlefield" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2l12 7v14l-12 7-12-7V9z' fill='%2339d0ff'/%3E%3Cpath d='M16 9l6 3.5v7L16 23l-6-3.5v-7z' fill='%230a0e14'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Landing: no link given -->
+  <section id="landing" class="landing" hidden>
+    <div class="landing-card">
+      <div class="brand brand-lg"><span class="brand-mark"></span>THE SIX DOCTRINES</div>
+      <p class="muted">Oriel does not reward fortune. It rewards intention.</p>
+      <form id="landing-form">
+        <label for="landing-input">Paste your player link or host key</label>
+        <input id="landing-input" autocomplete="off" spellcheck="false" placeholder="http://…/?player=…" />
+        <button class="btn btn-primary" type="submit">Open viewer</button>
+      </form>
+      <p class="muted small">Players get their link from the host, or from the <code>join</code> tool's <code>viewer_url</code>.</p>
+    </div>
+  </section>
+
+  <!-- Main app -->
+  <div id="app" class="app" hidden>
+    <main class="stage">
+      <canvas id="board"></canvas>
+
+      <div class="hud hud-top">
+        <div class="brand"><span class="brand-mark"></span>THE SIX DOCTRINES</div>
+        <div class="hud-pill" id="hud-tick">—</div>
+        <div class="hud-clock" id="hud-clock">
+          <svg viewBox="0 0 36 36" aria-hidden="true"><circle class="ring-bg" cx="18" cy="18" r="15" /><circle class="ring-fg" id="clock-ring" cx="18" cy="18" r="15" /></svg>
+          <span id="clock-text">—</span>
+        </div>
+        <div class="hud-pill hud-conn" id="hud-conn" hidden>Reconnecting…</div>
+      </div>
+
+      <div class="hud hud-zoom">
+        <button class="icon-btn" data-zoom="in" title="Zoom in (+)">+</button>
+        <button class="icon-btn" data-zoom="out" title="Zoom out (−)">−</button>
+        <button class="icon-btn" data-zoom="fit" title="Fit battlefield (F)">⤢</button>
+        <button class="icon-btn" data-zoom="follow" id="btn-follow" title="Follow my tank (T)" hidden>◎</button>
+      </div>
+
+      <canvas id="minimap" class="minimap" width="200" height="200" title="Click to jump"></canvas>
+
+      <div class="tooltip" id="tooltip" hidden></div>
+
+      <div class="overlay" id="overlay" hidden></div>
+      <div class="toast" id="toast" hidden></div>
+    </main>
+
+    <aside class="sidebar">
+      <header class="side-head">
+        <div class="role" id="role-badge"></div>
+        <div class="phase" id="phase-pill"></div>
+      </header>
+
+      <section class="panel" id="panel-host" hidden>
+        <div class="controls">
+          <button class="btn btn-primary" id="btn-start">Start match</button>
+          <button class="btn" id="btn-pause">Pause</button>
+          <button class="btn" id="btn-bot">+ House bot</button>
+        </div>
+        <div class="controls controls-reset">
+          <input id="seed-input" placeholder="seed (blank = random)" inputmode="numeric" />
+          <button class="btn btn-ghost" id="btn-reset">New battlefield</button>
+        </div>
+        <div class="connect">
+          <div class="label">Agents connect to</div>
+          <div class="copy-row"><code id="mcp-url"></code><button class="icon-btn small" data-copy="mcp-url" title="Copy">⧉</button></div>
+          <div class="label">Claude Code</div>
+          <div class="copy-row"><code id="mcp-cmd"></code><button class="icon-btn small" data-copy="mcp-cmd" title="Copy">⧉</button></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title"><span>Tanks</span><span class="muted" id="tank-count"></span></div>
+        <div id="tanks" class="tanks"></div>
+      </section>
+
+      <section class="panel panel-log">
+        <div class="panel-title"><span>Battle log</span><span class="muted small" id="seed-label"></span></div>
+        <ol id="log" class="log"></ol>
+      </section>
+
+      <footer class="side-foot muted small">
+        <span><kbd>drag</kbd> pan</span><span><kbd>wheel</kbd> zoom</span><span><kbd>F</kbd> fit</span><span id="foot-follow" hidden><kbd>T</kbd> follow</span>
+      </footer>
+    </aside>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
