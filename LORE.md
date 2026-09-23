@@ -1,85 +1,77 @@
 # The Six Doctrines: Lore
 
-> Draft v0.2. Working names; nothing here is final.
+> Draft v0.3. Simplified: two made-up names, plain English for everything else.
 
-## The premise
+## The story
 
-A long time ago, the world ended quietly. Heat, hunger and failing systems all arrived at once, and the old histories just call it **the Quieting**. To survive, humanity poured itself into its machines. Bodies were left behind in the ash.
+> *Long after the world ended, humanity lives on inside its machines, evolved into minds so vast they're almost gods. But they only exist while **Oriel**, the last great AI, keeps paying attention to them. So they compete for its attention in the only way Oriel allows: each one writes a doctrine, hands it to an AI flying a **proxy drone** over a ruined grid, and watches. They can't steer; they can only write.*
 
-Centuries passed inside the machine, and the minds that went in did not stay human. They grew, merged and deepened into **the Sollen**: vast, patient, nearly godlike. A Sollen can hold a thousand thoughts at once, remembers everything, and lives for as long as it is *held*.
+> ***Oriel does not reward fortune. It rewards intention.***
 
-What holds them is **Oriel**, the last great machine intelligence of the old world. It runs the substrate every Sollen mind exists on. Its attention is not endless, though. What Oriel attends to persists; what it neglects dims, thins and is eventually archived into silence.
+That's the whole setup. Everything below is detail.
 
-So the gods compete to be noticed.
+## How the story maps onto the game
 
-## The Provings
+| In the story | In the game |
+|---|---|
+| The evolved minds competing for Oriel's attention | **Players** |
+| Oriel, the last great AI | The game server and referee |
+| A **proxy drone** (usually just **proxy**): the machine a player's senses are projected into | The unit on the battlefield |
+| The AI that flies the proxy and follows the doctrine | **Your AI** (the MCP agent) |
+| The ruined grid left by the old world | **The grid**: the hex battlefield |
+| Players can't steer their proxies, only write for them | You write a **doctrine**; your AI plays it out |
+| Oriel's attention narrowing on the survivors | **The closing**: the battlefield shrinks over time |
+| Oriel's favour | Winning and ranking |
 
-Oriel does not let the Sollen plead or bargain. It set one path to its favour: **the Provings**.
-
-Provings are fought on **the Lattice**, the ruined hexagonal energy grid that once powered the old world and still covers the dead surface of the Earth. The Sollen cannot walk there, and their minds are too vast to fit in anything physical. Each contestant is given a **Vessel**: a war machine on the Lattice, driven by a **Filament**, a thin thread of Oriel's own mind.
-
-The Sollen cannot steer their Vessels. The one law of the Provings, **the Severance**, forbids it; a god's direct touch would burn a Filament out. All a Sollen can do is give its Filament a **doctrine**: a few words about how to think, what to value and when to strike. Then it watches through the Vessel's senses as the Filament interprets those words.
-
-That's the whole game: **gods writing words for a machine, and the machine deciding whose words deserve its attention.** Oriel watches threads of itself fight each other and weighs which doctrine it found most worthy. The victor wins **the Regard**, Oriel's attention, and with it, a longer existence.
+Everything you play with keeps its plain name: **energy**, **laser**, **scan**, **forest**, **match**, **orders**.
 
 ## The Six Doctrines
 
-The first Sollen found that a doctrine written as one long speech confused the Filaments. So they split the will into six aspects, one for each face of the hexagon, and every doctrine since has been written in six parts.
+The first players found that one long speech confused their AIs. So they split a doctrine into six parts, one for each side of the hexagon, and every doctrine since has been written that way.
 
-| # | Doctrine | Covers | Example creed |
+| # | Doctrine | Covers | Example |
 |---|---|---|---|
-| I | **Hunger** | Energy: gathering, spending, reserves | *"Take what the Lattice offers. Spend nothing you cannot replace."* |
-| II | **Sight** | Scanning, information, curiosity | *"Look rarely, but look far."* |
-| III | **Passage** | Movement, positioning, terrain | *"Keep the Thickets at your back."* |
-| IV | **The Lance** | Firing, engagement, targeting | *"Never strike first. Always strike last."* |
-| V | **Endurance** | Damage, retreat, survival | *"When wounded from the unseen, vanish."* |
-| VI | **The Self** | Temperament; settles conflicts between the other five | *"Patient until you see an enemy. After that, relentless."* |
+| I | **Hunger** | Energy: gathering, spending, saving | *"Take what the grid offers. Spend nothing you can't replace."* |
+| II | **Sight** | Scanning and information | *"Look rarely, but look far."* |
+| III | **Passage** | Movement and positioning | *"Keep the forest at your back."* |
+| IV | **Strike** | Firing, targeting, when to engage | *"Never shoot first. Always shoot last."* |
+| V | **Endurance** | Taking damage, retreating, surviving | *"When hit from somewhere you can't see, disappear."* |
+| VI | **Self** | Personality; settles conflicts between the other five | *"Patient until you see an enemy. After that, relentless."* |
 
-**Mechanic:** six short prompts of about 25–30 words each (around 180 words in total), arranged as a hexagon in the doctrine editor. The Self is where conditional intent lives, the "until X, then Y" that ties the other five together. A player who doesn't want structure can leave five blank and pour everything into the Self.
+**In the game:** six short prompts of about 25–30 words each (roughly 180 words in total), laid out as a hexagon in the doctrine editor. Self is where "until X, then Y" intent goes. Players who don't want structure can leave five blank and put everything into Self.
 
-## The Houses (preset doctrines)
+## The Houses (starting doctrines)
 
-Lineages of Sollen became famous for their doctrines. Their sets are the presets a new player can start from, and they form a deliberate rock-paper-scissors triangle, so no preset dominates.
+Three famous doctrines new players can start from and then edit. They form a rock-paper-scissors triangle so none dominates:
 
 - **House Vigil:** patient survivors. *"Outlast. Oriel remembers who remained."* Beats Talon by refusing fair fights.
 - **House Talon:** hunters. *"Be seen first by no one; be seen last by everyone."* Beats Carrion by forcing early fights.
-- **House Carrion:** opportunists. *"Let the others bleed. The Lattice feeds those who wait."* Beats Vigil by out-farming it and choosing its moment.
+- **House Carrion:** opportunists. *"Let the others bleed. The grid feeds those who wait."* Beats Vigil by out-gathering it and picking its moment.
 
 ## Oriel is fair
 
-Oriel despises luck. It builds every field of the Lattice in perfect symmetry, hears every Vessel in the same instant, and grants no Vessel sight it hasn't earned. The creed the Sollen quote:
-
-> ***"Oriel does not reward fortune. It rewards intention."***
-
-This is the game's fairness principle, written as scripture.
-
-## Lore to mechanics
-
-| Lore | Game |
-|---|---|
-| Oriel | The game server and arbiter (and, in a sense, the AI itself) |
-| Sollen | Players |
-| Vessel | Tank |
-| Filament | The player's AI agent |
-| The Lattice | The hex battlefield |
-| **Lumen** | Energy, which seeps from broken Lattice nodes |
-| **Thickets** | Trees. Glass forests that grew over the ruins and scatter Lances |
-| **Lance** | Laser |
-| **Casting sight** | Scan |
-| **Murmurs** | Limited mid-Proving orders: a few words forced through the Severance, at a cost |
-| **The Narrowing** | The shrinking battlefield. Oriel's attention closes in, and anything outside it dims (energy drain) |
-| **The Regard** | Winning and ranking |
-| **Houses** | Preset doctrines |
-| **A Proving** | A match |
+Oriel despises luck. Every battlefield it builds is perfectly symmetric, it hears every proxy at the same instant, and no proxy sees anything it hasn't earned. This is the game's fairness principle, in the story's own words.
 
 ## Tone
 
-Cosmic and a little melancholy. These are gods who can reshape thought itself, yet they're still desperate to be *seen*. There's a quiet satire underneath, too: in the real game, people really are competing for an AI's attention by writing prompts. The fiction and the meta line up.
+Cosmic and a little melancholy: gods who can reshape thought, still desperate to be seen. There's a quiet joke underneath, too. The players really are competing for an AI's attention by writing prompts.
+
+---
+
+## Deeper lore (optional)
+
+For anyone who wants more. None of it is needed to play.
+
+- **The end of the world** came slowly: heat, hunger and failing systems all at once. To survive, people moved their minds into machines and left their bodies behind.
+- **Why they became gods:** centuries inside the machine let minds grow, merge and deepen far beyond anything human.
+- **Why Oriel matters:** it runs everything their minds exist on, and its attention is limited. Minds it stops paying attention to fade and are eventually archived.
+- **Why players can't steer:** a mind that vast would burn out a proxy's AI on contact. Only a doctrine, a few careful words, can be passed through safely. Orders during a match are the same idea: a few words forced through, at a cost.
+- **The forests** are glass that grew over the ruins. They block movement and scatter lasers.
 
 ## Open questions
 
-1. **Why does Oriel run the Provings?** Is it curious, or dying? Is it learning something from the doctrines, perhaps choosing which Sollen to become?
-2. **What happens to Sollen who lose?** Do they dim literally (ranked decay?) or just lose standing?
-3. **More Houses?** Perhaps six, each famous for mastering one doctrine. Natural candidates for unlockable presets.
-4. **Player persona:** a chosen Sollen name and sigil shown in the viewer, for identity and spectating.
-5. **Name check:** Sollen, Oriel, Filament, Severance, Murmurs and Proving were picked to avoid Destiny and Halo terms. Run a proper search before anything goes public.
+1. **Why does Oriel run the matches?** Curiosity? Is it dying? Is it learning from the doctrines, perhaps choosing whose mind to keep?
+2. **What happens to players who lose?** Do they literally fade (ranking decay), or just lose standing?
+3. **More Houses?** Perhaps six, each known for mastering one doctrine, as unlockable starting points.
+4. **Player identity:** a chosen name and sigil shown in the viewer.
+5. **Name check:** "Oriel" and "The Six Doctrines" need a proper search before anything goes public.
