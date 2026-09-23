@@ -74,4 +74,4 @@ For anyone who wants more. None of it is needed to play.
 2. **What happens to players who lose?** Do they literally fade (ranking decay), or just lose standing?
 3. **More Houses?** Perhaps six, each known for mastering one doctrine, as unlockable starting points.
 4. **Player identity:** a chosen name and sigil shown in the viewer.
-5. **Name check:** "Oriel" and "The Six Doctrines" need a proper search before anything goes public.
+5. **Name check (done):** "The Six Doctrines" is clear: web searches only turn up religious texts, with no games or apps using it (not yet checked against trademark databases such as USPTO/UKIPO). **"Oriel" clashes: it is an AI character in Halo** (an ancilla), which is exactly the association we wanted to avoid. It needs renaming; candidates that came up clear in games and AI are *Aurelle* and *Tesserine*.

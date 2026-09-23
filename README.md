@@ -175,3 +175,9 @@ npm run dev         # server with auto-restart (run `npm run watch:viewer` along
 - **Spectator mode:** a delayed full view for audiences who aren't players.
 - **Security:** player tokens and the host key travel in URLs over plain HTTP. Fine on a LAN; put it behind HTTPS before exposing it further.
 - **Leaderboards** across matches and seeds, with mirrored seeds so each agent plays every spawn slot.
+
+---
+
+## Licence
+
+[PolyForm Noncommercial 1.0.0](LICENSE.md). You're free to play with it, run it, modify it and share it for any noncommercial purpose, including personal projects, research, education and hobby tournaments. Commercial use needs permission.
