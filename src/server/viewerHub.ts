@@ -60,7 +60,7 @@ export function attachViewerHub(httpServer: Server, match: Match, opts: HubOptio
     const energy: number[] = [];
     for (const [k, v] of g.energyCells) { const h = parseKey(k); energy.push(h.q, h.r, v); }
     return {
-      tick: g.tick, phase: g.phase, deadline: match.deadline, serverNow: Date.now(),
+      tick: g.tick, phase: g.phase, deadline: match.deadline, serverNow: Date.now(), tickMs: match.tickMs,
       proxies: [...g.proxies.values()].map(fullProxy),
       energy, events: g.lastEvents, eventsTick: g.lastEventsTick, winnerId: g.winnerId,
     };
@@ -98,7 +98,7 @@ export function attachViewerHub(httpServer: Server, match: Match, opts: HubOptio
     if (me) { c.exploredSent = me.exploredLog.length; c.forestSent = me.knownForestLog.length; }
 
     return {
-      tick: g.tick, phase: g.phase, deadline: match.deadline, serverNow: Date.now(),
+      tick: g.tick, phase: g.phase, deadline: match.deadline, serverNow: Date.now(), tickMs: match.tickMs,
       proxies, energy, events, eventsTick: g.lastEventsTick, winnerId: g.winnerId,
       exploredDelta, forestDelta,
     };
@@ -174,6 +174,7 @@ export function attachViewerHub(httpServer: Server, match: Match, opts: HubOptio
             case 'reset': match.reset(msg.seed); break;
             case 'kick': match.kick(msg.proxyId); break;
             case 'addBot': match.join(`Bot ${botName()}`, { isBot: true }); break;
+            case 'speed': match.setTickMs(msg.tickMs); break;
           }
         } catch (e) {
           send(ws, { type: 'error', message: e instanceof GameError ? e.message : 'Command failed.' });

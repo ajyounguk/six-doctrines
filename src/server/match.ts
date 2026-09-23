@@ -18,6 +18,8 @@ interface Waiter {
 export class Match {
   game: Game;
   deadline: number | null = null;
+  /** Minimum tick length; the host can change it mid-match. Doesn't affect game outcomes. */
+  tickMs: number;
 
   private waiters = new Map<string, Waiter>();
   private startWaiters = new Set<() => void>();
@@ -29,6 +31,12 @@ export class Match {
 
   constructor(readonly rules: Rules, seed: number) {
     this.game = new Game(rules, seed);
+    this.tickMs = rules.minTickMs;
+  }
+
+  setTickMs(ms: number) {
+    this.tickMs = Math.max(50, Math.min(5000, Math.round(ms)));
+    this.emit();
   }
 
   onChange(fn: Listener): () => void {
@@ -141,7 +149,7 @@ export class Match {
 
   private maybeResolve() {
     if (this.game.phase !== 'running' || !this.game.allSubmitted() || this.resolveTimer) return;
-    const wait = Math.max(0, this.tickOpenedAt + this.rules.minTickMs - Date.now());
+    const wait = Math.max(0, this.tickOpenedAt + this.tickMs - Date.now());
     this.resolveTimer = setTimeout(() => this.resolveNow(), wait);
   }
 

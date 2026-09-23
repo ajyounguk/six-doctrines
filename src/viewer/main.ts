@@ -114,6 +114,7 @@ function start() {
 
     // Play the last resolved tick's events once; move paths come from the events themselves.
     const fresh = s.eventsTick > lastEventsTick && s.eventsTick > 0;
+    renderer.tickMs = s.tickMs;
     renderer.setSnapshot(s, myId);
     if (fresh) {
       lastEventsTick = s.eventsTick;
@@ -156,6 +157,7 @@ function start() {
       pause.disabled = s.phase !== 'running' && s.phase !== 'paused';
       pause.textContent = s.phase === 'paused' ? 'Resume' : 'Pause';
       $<HTMLButtonElement>('btn-bot').disabled = s.phase !== 'lobby' || s.proxies.length >= rules.maxPlayers;
+      document.querySelectorAll<HTMLButtonElement>('#speed .seg').forEach((b) => b.classList.toggle('active', Number(b.dataset.tick) === s.tickMs));
     }
 
     const proxies = [...s.proxies].sort((a, b) => Number(b.id === myId) - Number(a.id === myId));
@@ -406,6 +408,8 @@ function start() {
   $('btn-start').addEventListener('click', () => host({ cmd: 'start' }));
   $('btn-pause').addEventListener('click', () => host({ cmd: snap?.phase === 'paused' ? 'resume' : 'pause' }));
   $('btn-bot').addEventListener('click', () => host({ cmd: 'addBot' }));
+  document.querySelectorAll<HTMLButtonElement>('#speed .seg').forEach((b) =>
+    b.addEventListener('click', () => host({ cmd: 'speed', tickMs: Number(b.dataset.tick) })));
   $('btn-reset').addEventListener('click', () => {
     if (snap?.phase === 'running' && !confirm('Abandon the current match and generate a new battlefield?')) return;
     const v = $<HTMLInputElement>('seed-input').value.trim();

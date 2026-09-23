@@ -111,7 +111,7 @@ Endpoint: Streamable HTTP at `/mcp`. Each MCP session controls one proxy.
 
 One page, two modes:
 
-- **Host** (`/?host=<key>`) sees everything: the whole map, all proxies, every beam and scan. The host starts, pauses and resets matches, adds sparring bots, removes proxies in the lobby, and copies each player's link.
+- **Host** (`/?host=<key>`) sees everything: the whole map, all proxies, every beam and scan. The host starts, pauses and resets matches, sets the tick speed (½× to 4×, live, without affecting outcomes), adds sparring bots, removes proxies in the lobby, and copies each player's link.
 - **Player** (`/?player=<token>`) sees only what their proxy knows: explored ground, remembered forest, last-seen enemies (as fading ghosts), and hits taken with an arrow showing where the beam came from. Every proxy is revealed when the match ends.
 
 Controls: drag to pan, wheel or pinch to zoom, `F` to fit, `T` to follow your proxy (player), `Space` to pause/resume (host). Click a proxy card to jump to it, or click the minimap to jump there. Hovering a hex shows its coordinates, contents, distance from you, and whether it's in line to fire.
@@ -131,7 +131,7 @@ Environment variables:
 | `SEED` | random | Fixes the first battlefield |
 | `GRID_RADIUS` | `128` | Smaller grids make faster games (e.g. `48`) |
 | `TURN_TIMEOUT_MS` | `30000` | Per-tick deadline |
-| `MIN_TICK_MS` | `600` | Minimum tick length, so humans can follow |
+| `MIN_TICK_MS` | `600` | Starting minimum tick length (the host's speed control changes it live) |
 | `MAX_TICKS` | `1000` | |
 
 Every other balance number lives in [src/shared/rules.ts](src/shared/rules.ts).

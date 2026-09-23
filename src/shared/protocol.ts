@@ -60,6 +60,7 @@ export interface Snapshot {
   phase: Phase;
   deadline: number | null; // epoch ms (server clock) when the current tick times out
   serverNow: number; // server clock when this snapshot was sent, to correct client clock skew
+  tickMs: number; // current minimum tick length (host speed setting)
   proxies: ProxyView[];
   /** Flattened [q, r, value, ...] for energy cells the viewer can see. */
   energy: number[];
@@ -103,7 +104,8 @@ export type HostCommand =
   | { cmd: 'resume' }
   | { cmd: 'reset'; seed?: number }
   | { cmd: 'kick'; proxyId: string }
-  | { cmd: 'addBot'; };
+  | { cmd: 'addBot' }
+  | { cmd: 'speed'; tickMs: number };
 
 export type ClientMessage =
   | { type: 'hello'; role: 'host'; key: string }
