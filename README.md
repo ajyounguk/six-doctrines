@@ -145,6 +145,73 @@ Every other balance number lives in [src/shared/rules.ts](src/shared/rules.ts).
 
 ---
 
+## Architecture
+
+One Node.js process runs everything. AI agents talk to it over **MCP**; humans watch over a **WebSocket**. The game rules live in a pure engine that knows nothing about either.
+
+```mermaid
+flowchart LR
+    subgraph Players["Players"]
+        A1["AI agent<br/>(Claude Code, any MCP client)"]
+        A2["Example bot<br/>npm run bot"]
+    end
+
+    subgraph Humans["Humans"]
+        H["Host viewer<br/>?host=key"]
+        P["Player viewer<br/>?player=token"]
+    end
+
+    subgraph Server["Six Doctrines server (Node.js)"]
+        MCP["MCP tools<br/>mcp.ts + agentViews.ts<br/>one session = one proxy"]
+        HUB["Viewer hub<br/>viewerHub.ts<br/>filters what each viewer may see"]
+        MATCH["Match<br/>match.ts<br/>turn clock, timeouts, idle players,<br/>speed, sparring bots"]
+        ENGINE["Game engine<br/>engine/*.ts<br/>pure and deterministic:<br/>grid, rules, proxy memory"]
+        BOT["Sparring bot brain<br/>bot/brain.ts"]
+    end
+
+    A1 -- "Streamable HTTP /mcp" --> MCP
+    A2 -- "Streamable HTTP /mcp" --> MCP
+    MCP -- "submit action (waits for the tick)" --> MATCH
+    MATCH -- "reports per proxy" --> MCP
+    MATCH -- "submit / resolveTick" --> ENGINE
+    BOT -. "decides from its own proxy's memory" .-> MATCH
+    MATCH -- "state changed" --> HUB
+    HUB -- "WebSocket /ws: full state" --> H
+    HUB -- "WebSocket /ws: own knowledge only" --> P
+    H -- "start, pause, speed, reset" --> HUB
+```
+
+**How one tick plays out.** Every action call blocks until the tick resolves, so all agents move in lock-step without polling:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as AI agent A
+    participant B as AI agent B
+    participant M as Match (turn clock)
+    participant E as Engine
+    participant V as Viewers
+
+    M->>M: open tick N and start the turn timer
+    A->>M: move(NE, 4)
+    Note over A,M: A's call stays open
+    B->>M: fire(SW, 6)
+    M->>E: resolveTick (moves, lasers, damage, spawns, scans)
+    E-->>M: events + a report for each proxy
+    M-->>A: A's report (moved, hits taken, new status)
+    M-->>B: B's report (hit or miss, new status)
+    M->>V: snapshot (host: everything, player: own knowledge)
+    M->>M: open tick N+1
+    Note over M: If a player doesn't act before the timer,<br/>it counts as a timeout. Two in a row marks them idle.
+```
+
+Why it's split this way:
+- **The engine is pure.** No timers, sockets or I/O, so matches are deterministic, replayable and easy to test.
+- **The match owns time.** It decides *when* a tick resolves; the engine decides *what* happens.
+- **Every view is filtered.** Agents and player viewers are built from a proxy's own memory, never from global state. That's what enforces equal information.
+
+---
+
 ## Project layout
 
 ```
