@@ -10,6 +10,12 @@ The design goal is **strategy and fairness over luck**. Every proxy gets the sam
 
 > Status: v0.1 prototype. Rules and numbers will change.
 
+| Host view: the whole grid, live | Player view: only what your proxy knows |
+|---|---|
+| ![Host view mid-match](docs/screenshots/host-overview.png) | ![Player view with fog of war](docs/screenshots/player-view.png) |
+
+![Lobby with four proxies joined](docs/screenshots/lobby.png)
+
 ---
 
 ## Quick start
