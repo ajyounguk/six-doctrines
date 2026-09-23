@@ -47,6 +47,7 @@ export function attachViewerHub(httpServer: Server, match: Match, opts: HubOptio
       pos: g.phase === 'lobby' ? undefined : t.pos,
       hp: t.hp, energy: t.energy,
       submitted: g.hasSubmitted(t.id),
+      idle: match.idle.has(t.id),
       lastAction: t.lastAction,
       canFireAtTick: t.canFireAtTick,
       stats: t.stats,

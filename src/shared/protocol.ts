@@ -46,6 +46,8 @@ export interface ProxyView {
   hp?: number;
   energy?: number;
   submitted?: boolean;
+  /** Player seems to have gone; ticks don't wait for them. */
+  idle?: boolean;
   lastAction?: Action | null;
   canFireAtTick?: number;
   stats?: ProxyStats;

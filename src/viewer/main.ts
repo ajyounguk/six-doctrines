@@ -173,6 +173,7 @@ function start() {
     let chip = '';
     if (!t.alive) chip = `<span class="chip dead">destroyed</span>`;
     else if (s.phase === 'finished') chip = t.id === s.winnerId ? `<span class="chip win">winner</span>` : t.placement ? `<span class="chip">#${t.placement}</span>` : '';
+    else if (s.phase === 'running' && t.idle) chip = `<span class="chip" title="Timed out repeatedly; ticks no longer wait for this player">idle</span>`;
     else if (s.phase === 'running' && t.submitted !== undefined) chip = t.submitted ? `<span class="chip ready">ready</span>` : `<span class="chip thinking">thinking</span>`;
     else if (s.phase === 'lobby') chip = `<span class="chip ready">joined</span>`;
 

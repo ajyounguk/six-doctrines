@@ -28,6 +28,14 @@ async function call(tool: string, args: Record<string, unknown> = {}): Promise<a
 const joined = await call('join', { name });
 console.log(`joined as ${joined.joined_as}\nplayer view: ${joined.viewer_url}`);
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Waits for the next match to start: first for a return to the lobby, then for the start. */
+async function nextMatch() {
+  while ((await call('status')).match.phase !== 'lobby') await sleep(2000);
+  while (!(await call('wait_for_start')).started) console.log('waiting for the host to start…');
+}
+
 while (!(await call('wait_for_start')).started) console.log('waiting for the host to start…');
 const rules = await call('rules');
 const num = (s: string, re: RegExp) => Number(s.match(re)?.[1]);
@@ -36,15 +44,23 @@ const maxPower = num(rules.actions.fire, /Power 1-(\d+)/);
 const maxScan = num(rules.actions.scan, /radius \(1-(\d+)\)/);
 
 // The brain wants remembered forest as a Set; keep our own copy from known_map.
-const forest = new Set<string>();
+let forest = new Set<string>();
 let lastScanTick = -99;
+let playedTick = 0;
 
+// Plays forever, match after match, until you stop it (Ctrl+C).
 for (;;) {
   const status = await call('status');
   const { match, you } = status;
-  if (match.phase === 'finished' || !you.alive) {
-    console.log(match.phase === 'finished' ? `match over, placement ${you.placement}` : 'destroyed');
-    break;
+  // A reset puts the tick back to 0 (lobby) or 1: that's a new match, so forget the old map.
+  if (match.tick < playedTick) { forest = new Set(); lastScanTick = -99; }
+  playedTick = match.tick;
+  if (match.phase === 'paused') { await sleep(1000); continue; }
+  if (match.phase !== 'running' || !you.alive) {
+    if (match.phase === 'finished') console.log(`match over, placement ${you.placement}`);
+    else if (!you.alive) console.log('destroyed; waiting for the next match');
+    await nextMatch();
+    continue;
   }
   const known = await call('known_map', { radius: 40 });
   for (const [q, r] of known.forest) forest.add(`${q},${r}`);
@@ -72,7 +88,7 @@ for (;;) {
     console.log(`t${report.resolved_tick}: ${report.summary}`);
   } catch (e) {
     console.log(`t${match.tick}: ${(e as Error).message}`);
-    if (/over|destroyed|reset/.test((e as Error).message)) break;
+    if (/reset|not started/.test((e as Error).message)) await nextMatch();
+    else await sleep(250);
   }
 }
-await client.close();

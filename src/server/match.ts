@@ -10,6 +10,9 @@ import { botInputFromProxy } from '../bot/fromProxy.js';
 
 type Listener = (result?: TickResult) => void;
 
+/** Consecutive timeouts before a player counts as idle. */
+const IDLE_AFTER = 2;
+
 interface Waiter {
   resolve: (r: ProxyReport) => void;
   reject: (e: Error) => void;
@@ -20,6 +23,12 @@ export class Match {
   deadline: number | null = null;
   /** Minimum tick length; the host can change it mid-match. Doesn't affect game outcomes. */
   tickMs: number;
+  /**
+   * Proxies whose player seems to have gone (timed out IDLE_AFTER ticks in a row). Ticks stop
+   * waiting for them; they still take a timeout each tick, and any action they submit wakes them.
+   */
+  readonly idle = new Set<string>();
+  private timeoutStreak = new Map<string, number>();
 
   private waiters = new Map<string, Waiter>();
   private startWaiters = new Set<() => void>();
@@ -54,6 +63,7 @@ export class Match {
 
   join(name: string, opts: { isBot?: boolean } = {}): ProxyDrone {
     const t = this.game.join(name, opts);
+    this.forgetIdle(t.id); // ids can be reused after a kick
     this.emit();
     return t;
   }
@@ -64,7 +74,13 @@ export class Match {
 
   kick(proxyId: string) {
     this.game.leave(proxyId);
+    this.forgetIdle(proxyId);
     this.emit();
+  }
+
+  private forgetIdle(proxyId: string) {
+    this.idle.delete(proxyId);
+    this.timeoutStreak.delete(proxyId);
   }
 
   /** Resolves when the match starts, or after `maxWaitMs` if it hasn't. */
@@ -108,6 +124,7 @@ export class Match {
     this.deadline = null;
     for (const w of this.waiters.values()) w.reject(new GameError('The host reset the match. Call wait_for_start.'));
     this.waiters.clear();
+    this.timeoutStreak.clear(); // idle players stay idle until they act again
     const old = [...this.game.proxies.values()].sort((a, b) => a.joinOrder - b.joinOrder);
     this.game = new Game(this.rules, seed);
     // Same ids and tokens, so bound MCP sessions and player links keep working.
@@ -120,6 +137,8 @@ export class Match {
   /** Queues an action and resolves with this proxy's report once the tick resolves. */
   submit(proxyId: string, action: Action): Promise<ProxyReport> {
     this.game.submit(proxyId, action);
+    this.idle.delete(proxyId);
+    this.timeoutStreak.set(proxyId, 0);
     const p = new Promise<ProxyReport>((resolve, reject) => this.waiters.set(proxyId, { resolve, reject }));
     this.emit();
     this.maybeResolve();
@@ -148,7 +167,7 @@ export class Match {
   }
 
   private maybeResolve() {
-    if (this.game.phase !== 'running' || !this.game.allSubmitted() || this.resolveTimer) return;
+    if (this.game.phase !== 'running' || !this.game.allSubmitted(this.idle) || this.resolveTimer) return;
     const wait = Math.max(0, this.tickOpenedAt + this.tickMs - Date.now());
     this.resolveTimer = setTimeout(() => this.resolveNow(), wait);
   }
@@ -157,6 +176,11 @@ export class Match {
     this.clearTimers();
     if (this.game.phase !== 'running') return;
     const result = this.game.resolveTick();
+    for (const [id, rep] of result.reports) {
+      const streak = rep.action === null ? (this.timeoutStreak.get(id) ?? 0) + 1 : 0;
+      this.timeoutStreak.set(id, streak);
+      if (streak >= IDLE_AFTER) this.idle.add(id);
+    }
     for (const [id, w] of this.waiters) {
       const rep = result.reports.get(id);
       if (rep) w.resolve(rep);

@@ -174,8 +174,9 @@ export class Game {
     return this.pending.has(proxyId);
   }
 
-  allSubmitted(): boolean {
-    return this.aliveProxies().every((t) => this.pending.has(t.id));
+  /** True when every live proxy has acted, not counting `skip` (idle players the server won't wait for). */
+  allSubmitted(skip: ReadonlySet<string> = new Set()): boolean {
+    return this.aliveProxies().every((t) => skip.has(t.id) || this.pending.has(t.id));
   }
 
   proxyAt(h: Hex): ProxyDrone | undefined {

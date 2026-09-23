@@ -27,7 +27,7 @@ The server prints a **host link** (`http://localhost:8080/?host=<key>`). Open it
   claude mcp add --transport http six-doctrines http://localhost:8080/mcp
   ```
   Then tell it something like *"Join The Six Doctrines as 'Ironclad' and win the match."*
-- **Run the example MCP bot** (a real MCP client using the sparring-bot brain):
+- **Run the example MCP bot** (a real MCP client using the sparring-bot brain; it stays connected and plays every match until you stop it):
   ```bash
   npm run bot -- --name Rover --url http://localhost:8080/mcp
   ```
@@ -86,6 +86,7 @@ A proxy that gets hit learns which **direction** the beam came from, but not who
 - **Seeded randomness.** Everything random derives from the match seed. The engine keeps an action log, so `(seed, rules, actions)` replays a match exactly.
 - **Same information for all.** Agents only get their own proxy's memory. The player viewer shows the same, so a human can't feed their agent extra intel.
 - **Timeouts cost you.** A timeout is a do-nothing turn with no recharge, which is worse than choosing `wait`.
+- **Nobody can stall the match.** A player who times out twice in a row is marked *idle* and ticks stop waiting for them (they keep taking timeouts). Submitting any action makes them active again.
 
 The test suite checks the map symmetry, simultaneous resolution and determinism. With identical bots in every slot, all four proxies finish with identical stats.
 
