@@ -11,20 +11,20 @@ export type Action =
   | { type: 'fire'; direction: Direction; power: number }
   | { type: 'wait' };
 
-export type BlockReason = 'tree' | 'tank' | 'edge' | 'collision';
+export type BlockReason = 'forest' | 'proxy' | 'edge' | 'collision';
 
 export type GameEvent =
-  | { type: 'move'; tankId: string; path: Hex[]; direction: Direction; requested: number; blockedBy?: BlockReason; blockedAt?: Hex }
-  | { type: 'fire'; tankId: string; from: Hex; direction: Direction; power: number; path: Hex[]; hit?: string; stoppedBy?: 'tree' | 'edge' | 'tank' | 'range' }
-  | { type: 'damage'; tankId: string; by: string; amount: number; hp: number; fromDirection: Direction }
-  | { type: 'destroyed'; tankId: string; by: string; at: Hex; dropped: number }
-  | { type: 'pickup'; tankId: string; at: Hex; amount: number }
-  | { type: 'scan'; tankId: string; center: Hex; radius: number; cost: number }
-  | { type: 'wait'; tankId: string; recharged: number }
-  | { type: 'timeout'; tankId: string }
+  | { type: 'move'; proxyId: string; path: Hex[]; direction: Direction; requested: number; blockedBy?: BlockReason; blockedAt?: Hex }
+  | { type: 'fire'; proxyId: string; from: Hex; direction: Direction; power: number; path: Hex[]; hit?: string; stoppedBy?: 'forest' | 'edge' | 'proxy' | 'range' }
+  | { type: 'damage'; proxyId: string; by: string; amount: number; hp: number; fromDirection: Direction }
+  | { type: 'destroyed'; proxyId: string; by: string; at: Hex; dropped: number }
+  | { type: 'pickup'; proxyId: string; at: Hex; amount: number }
+  | { type: 'scan'; proxyId: string; center: Hex; radius: number; cost: number }
+  | { type: 'wait'; proxyId: string; recharged: number }
+  | { type: 'timeout'; proxyId: string }
   | { type: 'spawn'; cells: Hex[]; value: number };
 
-export interface TankStats {
+export interface ProxyStats {
   kills: number;
   damageDealt: number;
   damageTaken: number;
@@ -36,7 +36,7 @@ export interface TankStats {
   timeouts: number;
 }
 
-export interface TankView {
+export interface ProxyView {
   id: string;
   name: string;
   color: string;
@@ -48,7 +48,7 @@ export interface TankView {
   submitted?: boolean;
   lastAction?: Action | null;
   canFireAtTick?: number;
-  stats?: TankStats;
+  stats?: ProxyStats;
   /** Player view only: tick this opponent was last seen at `pos`. */
   seenTick?: number;
   deathTick?: number;
@@ -60,7 +60,7 @@ export interface Snapshot {
   phase: Phase;
   deadline: number | null; // epoch ms (server clock) when the current tick times out
   serverNow: number; // server clock when this snapshot was sent, to correct client clock skew
-  tanks: TankView[];
+  proxies: ProxyView[];
   /** Flattened [q, r, value, ...] for energy cells the viewer can see. */
   energy: number[];
   /** Events from tick `eventsTick` (the last resolved one), filtered for the viewer. */
@@ -69,8 +69,8 @@ export interface Snapshot {
   winnerId: string | null;
   /** Player view: hexes newly explored since the last snapshot, flattened [q, r, ...]. */
   exploredDelta?: number[];
-  /** Player view: trees newly discovered since the last snapshot, flattened [q, r, ...]. */
-  treesDelta?: number[];
+  /** Player view: forest newly discovered since the last snapshot, flattened [q, r, ...]. */
+  forestDelta?: number[];
 }
 
 export type ViewerRole = 'host' | 'player';
@@ -78,16 +78,16 @@ export type ViewerRole = 'host' | 'player';
 export interface Welcome {
   type: 'welcome';
   role: ViewerRole;
-  tankId: string | null;
+  proxyId: string | null;
   seed: number;
   rules: Rules;
-  /** Flattened [q, r, ...]. Host: every tree. Player: trees their tank knows about. */
-  trees: number[];
-  /** Player only: every hex their tank has observed, flattened [q, r, ...]. */
+  /** Flattened [q, r, ...]. Host: every forest. Player: forest their proxy knows about. */
+  forest: number[];
+  /** Player only: every hex their proxy has observed, flattened [q, r, ...]. */
   explored: number[] | null;
   snapshot: Snapshot;
   mcpUrl: string;
-  /** Host only: per-tank links to hand to players. */
+  /** Host only: per-proxy links to hand to players. */
   playerLinks?: Record<string, string>;
 }
 
@@ -102,7 +102,7 @@ export type HostCommand =
   | { cmd: 'pause' }
   | { cmd: 'resume' }
   | { cmd: 'reset'; seed?: number }
-  | { cmd: 'kick'; tankId: string }
+  | { cmd: 'kick'; proxyId: string }
   | { cmd: 'addBot'; };
 
 export type ClientMessage =

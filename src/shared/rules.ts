@@ -2,9 +2,9 @@
 // from (rules, seed) alone.
 
 export interface Rules {
-  boardRadius: number; // hexagon-shaped board, hexes from centre to edge
+  gridRadius: number; // hexagon-shaped grid, hexes from centre to edge
   maxPlayers: number;
-  maxTicks: number; // match ends here if more than one tank is still alive
+  maxTicks: number; // match ends here if more than one proxy is still alive
 
   startHp: number;
   startEnergy: number;
@@ -16,7 +16,7 @@ export interface Rules {
   scanBaseCost: number; // scan cost = base + perRadius * radius
   scanCostPerRadius: number;
   maxScanRadius: number;
-  passiveSightRadius: number; // what a tank sees around itself for free every tick
+  passiveSightRadius: number; // what a proxy sees around itself for free every tick
 
   laserDamage: number;
   maxLaserPower: number; // energy spent = range in hexes
@@ -29,16 +29,16 @@ export interface Rules {
   initialEnergyWaves: number;
   maxEnergyCells: number;
 
-  treeDensity: number; // 0..1 target share of forest cover
-  spawnInset: number; // how far in from the board corners tanks start
-  spawnClearRadius: number; // trees cleared around every spawn corner
+  forestDensity: number; // 0..1 target share of forest cover
+  spawnInset: number; // how far in from the grid corners proxies start
+  spawnClearRadius: number; // forest cleared around every spawn corner
 
   turnTimeoutMs: number; // no action by then = timeout (acts as a wait with no recharge)
   minTickMs: number; // lower bound on tick length so humans can follow the action
 }
 
 export const DEFAULT_RULES: Rules = {
-  boardRadius: 128,
+  gridRadius: 128,
   maxPlayers: 4,
   maxTicks: 1000,
 
@@ -65,7 +65,7 @@ export const DEFAULT_RULES: Rules = {
   initialEnergyWaves: 30,
   maxEnergyCells: 400,
 
-  treeDensity: 0.14,
+  forestDensity: 0.14,
   spawnInset: 12,
   spawnClearRadius: 4,
 
@@ -76,8 +76,8 @@ export const DEFAULT_RULES: Rules = {
 export const scanCost = (rules: Rules, radius: number): number =>
   rules.scanBaseCost + rules.scanCostPerRadius * radius;
 
-/** Spawn slots (indices into the 6 board corners) per player count, chosen so every
- *  tank's position is equivalent under the map's symmetry. */
+/** Spawn slots (indices into the 6 grid corners) per player count, chosen so every
+ *  proxy's position is equivalent under the map's symmetry. */
 export const SPAWN_SLOTS: Record<number, number[]> = {
   1: [0],
   2: [0, 3],
@@ -85,4 +85,4 @@ export const SPAWN_SLOTS: Record<number, number[]> = {
   4: [0, 1, 3, 4],
 };
 
-export const TANK_COLORS = ['#ff5d5d', '#4da3ff', '#ffc233', '#b77dff'];
+export const PROXY_COLORS = ['#ff5d5d', '#4da3ff', '#ffc233', '#b77dff'];

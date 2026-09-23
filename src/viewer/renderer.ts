@@ -1,12 +1,12 @@
 // Canvas renderer for the battlefield. Static terrain is painted once into an offscreen
-// cache; tanks, energy and effects are drawn on top every frame.
+// cache; proxies, energy and effects are drawn on top every frame.
 
 import {
   DIRECTIONS, DIRECTION_VECTORS, SQRT3, type Direction, type Hex,
   alignedDirection, hexDistance, hexKey, hexLength, hexToPixel, pixelToHex,
 } from '../shared/hex.js';
 import { hash2 } from '../engine/rng.js';
-import type { GameEvent, Snapshot, TankView } from '../shared/protocol.js';
+import type { GameEvent, Snapshot, ProxyView } from '../shared/protocol.js';
 
 const S = 10; // world units per hex, centre to corner
 const CACHE_SCALE = 0.6; // cache pixels per world unit
@@ -15,8 +15,8 @@ const C = {
   stage: '#07090d',
   ground: ['#121a24', '#131c26', '#141e28', '#111923'],
   fog: '#0d131b',
-  tree: '#1c4631',
-  treeEdge: '#173b29',
+  forest: '#1c4631',
+  forestEdge: '#173b29',
   canopy: ['#2a6a46', '#23593b', '#317a50'],
   grid: 'rgba(160, 190, 220, 0.07)',
   edge: '#39d0ff',
@@ -34,7 +34,7 @@ interface Effect {
   draw: (ctx: CanvasRenderingContext2D, t: number) => void;
 }
 
-interface TankAnim { path: { x: number; y: number }[]; start: number; dur: number }
+interface ProxyAnim { path: { x: number; y: number }[]; start: number; dur: number }
 
 export interface HoverInfo { hex: Hex; x: number; y: number }
 
@@ -50,7 +50,7 @@ export class Renderer {
   private radius = 0;
   private halfW = 0;
   private halfH = 0;
-  private trees = new Set<string>();
+  private forest = new Set<string>();
   private explored: Set<string> | null = null; // null = everything visible (host)
 
   // camera: world point at screen centre, and screen px per world unit
@@ -61,10 +61,10 @@ export class Renderer {
   follow = false;
 
   private snap: Snapshot | null = null;
-  private myTankId: string | null = null;
-  private tankColors = new Map<string, string>();
+  private myProxyId: string | null = null;
+  private proxyColors = new Map<string, string>();
   private facing = new Map<string, number>(); // radians
-  private anims = new Map<string, TankAnim>();
+  private anims = new Map<string, ProxyAnim>();
   private effects: Effect[] = [];
   private hover: Hex | null = null;
   private focusRing: { id: string; start: number } | null = null;
@@ -88,14 +88,14 @@ export class Renderer {
     requestAnimationFrame(loop);
   }
 
-  // ------------------------------------------------------------ board + data
+  // ------------------------------------------------------------ grid + data
 
-  setBoard(radius: number, trees: number[], explored: number[] | null) {
+  setGrid(radius: number, forest: number[], explored: number[] | null) {
     this.radius = radius;
     this.halfW = 1.5 * S * radius + S;
     this.halfH = SQRT3 * S * (radius + 0.5);
-    this.trees = new Set();
-    for (let i = 0; i < trees.length; i += 2) this.trees.add(`${trees[i]},${trees[i + 1]}`);
+    this.forest = new Set();
+    for (let i = 0; i < forest.length; i += 2) this.forest.add(`${forest[i]},${forest[i + 1]}`);
     if (explored) {
       this.explored = new Set();
       for (let i = 0; i < explored.length; i += 2) this.explored.add(`${explored[i]},${explored[i + 1]}`);
@@ -109,23 +109,23 @@ export class Renderer {
     this.dirty = true;
   }
 
-  /** Player view: newly explored hexes and newly discovered trees. */
-  reveal(explored: number[] = [], trees: number[] = []) {
-    for (let i = 0; i < trees.length; i += 2) this.trees.add(`${trees[i]},${trees[i + 1]}`);
+  /** Player view: newly explored hexes and newly discovered forest. */
+  reveal(explored: number[] = [], forest: number[] = []) {
+    for (let i = 0; i < forest.length; i += 2) this.forest.add(`${forest[i]},${forest[i + 1]}`);
     for (let i = 0; i < explored.length; i += 2) {
       const h = { q: explored[i], r: explored[i + 1] };
       this.explored?.add(hexKey(h));
       this.paintCacheHex(h);
     }
-    for (let i = 0; i < trees.length; i += 2) this.paintCacheHex({ q: trees[i], r: trees[i + 1] });
-    if (explored.length || trees.length) this.dirty = true;
+    for (let i = 0; i < forest.length; i += 2) this.paintCacheHex({ q: forest[i], r: forest[i + 1] });
+    if (explored.length || forest.length) this.dirty = true;
   }
 
-  setSnapshot(snap: Snapshot, myTankId: string | null) {
+  setSnapshot(snap: Snapshot, myProxyId: string | null) {
     this.snap = snap;
-    this.myTankId = myTankId;
-    for (const t of snap.tanks) this.tankColors.set(t.id, t.color);
-    for (const t of snap.tanks) {
+    this.myProxyId = myProxyId;
+    for (const t of snap.proxies) this.proxyColors.set(t.id, t.color);
+    for (const t of snap.proxies) {
       if (!this.facing.has(t.id) && t.pos) this.facing.set(t.id, Math.atan2(-hexToPixel(t.pos, S).y, -hexToPixel(t.pos, S).x));
     }
     this.dirty = true;
@@ -139,7 +139,7 @@ export class Renderer {
   }
 
   private hexColor(h: Hex, k: string): string {
-    if (this.trees.has(k)) return C.tree;
+    if (this.forest.has(k)) return C.forest;
     if (this.explored && !this.explored.has(k)) return C.fog;
     return C.ground[Math.floor(hash2(h.q, h.r, 99) * C.ground.length)];
   }
@@ -220,8 +220,8 @@ export class Renderer {
     this.dirty = true;
   }
 
-  focusTank(id: string) {
-    const t = this.snap?.tanks.find((x) => x.id === id);
+  focusProxy(id: string) {
+    const t = this.snap?.proxies.find((x) => x.id === id);
     if (t?.pos) {
       this.focusHex(t.pos);
       this.focusRing = { id, start: performance.now() };
@@ -344,24 +344,24 @@ export class Renderer {
     this.onHover({ hex: h, x: sx, y: sy });
   }
 
-  isTree(h: Hex) { return this.trees.has(hexKey(h)); }
+  isForest(h: Hex) { return this.forest.has(hexKey(h)); }
   isExplored(h: Hex) { return !this.explored || this.explored.has(hexKey(h)); }
 
   // ------------------------------------------------------------ events → effects
 
-  playEvents(events: GameEvent[], tanks: TankView[]) {
+  playEvents(events: GameEvent[], proxies: ProxyView[]) {
     const now = performance.now();
-    const color = (id: string) => this.tankColors.get(id) ?? '#fff';
+    const color = (id: string) => this.proxyColors.get(id) ?? '#fff';
     let moveEnd = 0;
 
     for (const e of events) {
       if (e.type === 'move' && e.path.length > 1) {
         const dur = Math.min(700, 120 + 70 * (e.path.length - 1));
         moveEnd = Math.max(moveEnd, dur);
-        this.anims.set(e.tankId, { path: e.path.map((h) => hexToPixel(h, S)), start: now, dur });
-        this.facing.set(e.tankId, dirAngle(e.direction));
+        this.anims.set(e.proxyId, { path: e.path.map((h) => hexToPixel(h, S)), start: now, dur });
+        this.facing.set(e.proxyId, dirAngle(e.direction));
       } else if (e.type === 'move') {
-        this.facing.set(e.tankId, dirAngle(e.direction));
+        this.facing.set(e.proxyId, dirAngle(e.direction));
       }
       if (e.type === 'move' && e.blockedBy && e.blockedAt) {
         const at = hexToPixel(e.blockedAt, S);
@@ -380,10 +380,10 @@ export class Renderer {
       const at0 = now + moveEnd;
       switch (e.type) {
         case 'fire': {
-          this.facing.set(e.tankId, dirAngle(e.direction));
+          this.facing.set(e.proxyId, dirAngle(e.direction));
           const from = hexToPixel(e.from, S);
           const end = e.path.length ? hexToPixel(e.path[e.path.length - 1], S) : from;
-          const col = color(e.tankId);
+          const col = color(e.proxyId);
           this.addEffect(at0, 900, (ctx, t) => {
             const a = this.toScreen(from.x, from.y), b = this.toScreen(end.x, end.y);
             const grow = Math.min(1, t * 5);
@@ -412,7 +412,7 @@ export class Renderer {
           break;
         }
         case 'damage': {
-          const t = tanks.find((x) => x.id === e.tankId);
+          const t = proxies.find((x) => x.id === e.proxyId);
           if (!t?.pos) break;
           const p = hexToPixel(t.pos, S);
           this.addEffect(at0 + 180, 700, (ctx, k) => {
@@ -421,7 +421,7 @@ export class Renderer {
             ctx.strokeStyle = C.danger;
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.arc(s.x, s.y, this.tankRadius() * (1 + k * 1.6), 0, Math.PI * 2);
+            ctx.arc(s.x, s.y, this.proxyRadius() * (1 + k * 1.6), 0, Math.PI * 2);
             ctx.stroke();
           });
           this.floatText(p, `-${e.amount}`, C.danger, at0 + 180);
@@ -429,25 +429,25 @@ export class Renderer {
           break;
         }
         case 'destroyed':
-          this.explosion(hexToPixel(e.at, S), color(e.tankId), at0 + 250);
+          this.explosion(hexToPixel(e.at, S), color(e.proxyId), at0 + 250);
           break;
         case 'pickup':
           this.floatText(hexToPixel(e.at, S), `+${e.amount}`, C.energy, now + moveEnd * 0.6);
           break;
         case 'wait': {
-          const t = tanks.find((x) => x.id === e.tankId);
-          const close = S * this.zoom >= 8 || e.tankId === this.myTankId;
+          const t = proxies.find((x) => x.id === e.proxyId);
+          const close = S * this.zoom >= 8 || e.proxyId === this.myProxyId;
           if (t?.pos && e.recharged > 0 && close) this.floatText(hexToPixel(t.pos, S), `+${e.recharged}`, '#7c8a9b', now);
           break;
         }
         case 'timeout': {
-          const t = tanks.find((x) => x.id === e.tankId);
+          const t = proxies.find((x) => x.id === e.proxyId);
           if (t?.pos) this.floatText(hexToPixel(t.pos, S), 'timeout', '#ffb020', now);
           break;
         }
         case 'scan': {
           const c = hexToPixel(e.center, S);
-          const col = color(e.tankId);
+          const col = color(e.proxyId);
           const corners = DIRECTIONS.map((d) => {
             const v = hexToPixel(DIRECTION_VECTORS[d], S);
             return { x: v.x * (e.radius + 0.5), y: v.y * (e.radius + 0.5) };
@@ -505,7 +505,7 @@ export class Renderer {
       ctx.textAlign = 'center';
       ctx.lineWidth = 3;
       ctx.strokeStyle = 'rgba(7,10,15,.9)';
-      const y = s.y - this.tankRadius() - 36 - t * 22;
+      const y = s.y - this.proxyRadius() - 36 - t * 22;
       ctx.strokeText(text, s.x, y);
       ctx.fillStyle = color;
       ctx.fillText(text, s.x, y);
@@ -516,7 +516,7 @@ export class Renderer {
     const ang = dirAngle(from);
     this.addEffect(start, 1600, (ctx, t) => {
       const s = this.toScreen(p.x, p.y);
-      const r = this.tankRadius() + 10 + Math.sin(t * Math.PI * 4) * 2;
+      const r = this.proxyRadius() + 10 + Math.sin(t * Math.PI * 4) * 2;
       ctx.globalAlpha = 1 - t;
       ctx.fillStyle = C.danger;
       ctx.save();
@@ -553,11 +553,11 @@ export class Renderer {
 
   // ------------------------------------------------------------ drawing
 
-  private tankRadius() {
+  private proxyRadius() {
     return Math.max(7, S * this.zoom * 0.62);
   }
 
-  private tankWorldPos(t: TankView, now: number): { x: number; y: number } | null {
+  private proxyWorldPos(t: ProxyView, now: number): { x: number; y: number } | null {
     const a = this.anims.get(t.id);
     if (a) {
       const k = Math.min(1, (now - a.start) / a.dur);
@@ -578,7 +578,7 @@ export class Renderer {
     ctx.closePath();
   }
 
-  /** Calls fn for every on-board hex overlapping the screen. */
+  /** Calls fn for every on-grid hex overlapping the screen. */
   private forVisibleHexes(fn: (h: Hex, sx: number, sy: number) => void) {
     const tl = this.toWorld(0, 0), br = this.toWorld(this.w, this.h);
     const R = this.radius;
@@ -594,15 +594,15 @@ export class Renderer {
   }
 
   private frame(now: number) {
-    // Ease camera zoom, follow own tank.
+    // Ease camera zoom, follow own proxy.
     if (this.targetZoom !== null) {
       this.zoom += (this.targetZoom - this.zoom) * 0.18;
       if (Math.abs(this.targetZoom - this.zoom) < 0.0005) { this.zoom = this.targetZoom; this.targetZoom = null; }
       this.dirty = true;
     }
-    if (this.follow && this.myTankId && this.snap) {
-      const me = this.snap.tanks.find((t) => t.id === this.myTankId);
-      const p = me && this.tankWorldPos(me, now);
+    if (this.follow && this.myProxyId && this.snap) {
+      const me = this.snap.proxies.find((t) => t.id === this.myProxyId);
+      const p = me && this.proxyWorldPos(me, now);
       if (p) {
         const dx = p.x - this.cx, dy = p.y - this.cy;
         if (Math.abs(dx) + Math.abs(dy) > 0.05) { this.cx += dx * 0.15; this.cy += dy * 0.15; this.dirty = true; }
@@ -648,13 +648,13 @@ export class Renderer {
       ctx.globalAlpha = 1;
     }
 
-    // Crisp trees with canopy detail when zoomed in.
+    // Crisp forest with canopy detail when zoomed in.
     if (hexPx >= 13) {
       this.forVisibleHexes((h, x, y) => {
         const k = `${h.q},${h.r}`;
-        if (!this.trees.has(k)) return;
+        if (!this.forest.has(k)) return;
         this.hexPath(ctx, x, y, hexPx * 1.01);
-        ctx.fillStyle = C.tree;
+        ctx.fillStyle = C.forest;
         ctx.fill();
         const n = hash2(h.q, h.r, 5);
         for (let i = 0; i < 3; i++) {
@@ -669,9 +669,9 @@ export class Renderer {
 
     this.drawBoardEdge(ctx);
 
-    // Hover highlight, plus a firing line from my tank when the hovered hex is in line.
+    // Hover highlight, plus a firing line from my proxy when the hovered hex is in line.
     const snap = this.snap;
-    const me = snap?.tanks.find((t) => t.id === this.myTankId);
+    const me = snap?.proxies.find((t) => t.id === this.myProxyId);
     if (this.hover) {
       const s = this.hexScreen(this.hover);
       if (me?.pos && me.alive) {
@@ -695,7 +695,7 @@ export class Renderer {
 
     if (!snap) return;
 
-    // Effects under tanks (scan rings etc. draw here too; ordering is fine for v0.1).
+    // Effects under proxies (scan rings etc. draw here too; ordering is fine for v0.1).
     // Energy cells.
     const pulse = 0.75 + 0.25 * Math.sin(now / 350);
     const er = Math.max(2.5, hexPx * 0.36);
@@ -723,9 +723,9 @@ export class Renderer {
       }
     }
 
-    // Tanks: dead first, then ghosts (player view), then live ones on top.
-    const order = [...snap.tanks].sort((a, b) => Number(a.alive) - Number(b.alive));
-    for (const t of order) this.drawTank(ctx, t, now);
+    // Proxies: dead first, then ghosts (player view), then live ones on top.
+    const order = [...snap.proxies].sort((a, b) => Number(a.alive) - Number(b.alive));
+    for (const t of order) this.drawProxy(ctx, t, now);
 
     // Effects.
     for (const e of this.effects) {
@@ -755,14 +755,14 @@ export class Renderer {
     ctx.globalAlpha = 1;
   }
 
-  private drawTank(ctx: CanvasRenderingContext2D, t: TankView, now: number) {
-    const wp = this.tankWorldPos(t, now);
+  private drawProxy(ctx: CanvasRenderingContext2D, t: ProxyView, now: number) {
+    const wp = this.proxyWorldPos(t, now);
     if (!wp) return;
     const s = this.toScreen(wp.x, wp.y);
-    const r = this.tankRadius();
+    const r = this.proxyRadius();
     if (s.x < -80 || s.y < -80 || s.x > this.w + 80 || s.y > this.h + 80) return;
-    const ghost = t.seenTick !== undefined && t.id !== this.myTankId && t.alive;
-    const isMe = t.id === this.myTankId;
+    const ghost = t.seenTick !== undefined && t.id !== this.myProxyId && t.alive;
+    const isMe = t.id === this.myProxyId;
     ctx.save();
 
     if (!t.alive) {
@@ -784,7 +784,7 @@ export class Renderer {
       ctx.setLineDash([3, 3]);
     }
 
-    // Focus ring after clicking a tank card.
+    // Focus ring after clicking a proxy card.
     if (this.focusRing?.id === t.id) {
       const k = (now - this.focusRing.start) / 1500;
       if (k < 1) {
@@ -888,10 +888,10 @@ export class Renderer {
         const p = P(w.x, w.y);
         m.fillRect(p.x - 1, p.y - 1, 2 * this.dpr, 2 * this.dpr);
       }
-      for (const t of this.snap.tanks) {
+      for (const t of this.snap.proxies) {
         if (!t.pos) continue;
         const w = hexToPixel(t.pos, S), p = P(w.x, w.y);
-        m.globalAlpha = t.alive ? (t.seenTick !== undefined && t.id !== this.myTankId ? 0.5 : 1) : 0.35;
+        m.globalAlpha = t.alive ? (t.seenTick !== undefined && t.id !== this.myProxyId ? 0.5 : 1) : 0.35;
         m.fillStyle = t.alive ? t.color : '#4a5868';
         m.beginPath();
         m.arc(p.x, p.y, 3.5 * this.dpr, 0, Math.PI * 2);
@@ -908,7 +908,7 @@ export class Renderer {
   }
 
   hexDistanceFromMe(h: Hex): { distance: number; inLine: Direction | null } | null {
-    const me = this.snap?.tanks.find((t) => t.id === this.myTankId);
+    const me = this.snap?.proxies.find((t) => t.id === this.myProxyId);
     if (!me?.pos) return null;
     return { distance: hexDistance(me.pos, h), inLine: alignedDirection(me.pos, h) };
   }

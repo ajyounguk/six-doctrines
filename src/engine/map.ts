@@ -1,4 +1,4 @@
-// Board generation. Terrain is built from one symmetry sector and mirrored/rotated,
+// Grid generation. Terrain is built from one symmetry sector and mirrored/rotated,
 // so every spawn corner sees an identical battlefield.
 
 import {
@@ -8,11 +8,11 @@ import {
 import type { Rules } from '../shared/rules.js';
 import { hash2 } from './rng.js';
 
-export const onBoard = (h: Hex, radius: number): boolean => hexLength(h) <= radius;
+export const onGrid = (h: Hex, radius: number): boolean => hexLength(h) <= radius;
 
-/** Board corner i (0 = N, clockwise), pulled in by `inset` hexes. */
+/** Grid corner i (0 = N, clockwise), pulled in by `inset` hexes. */
 export function spawnCorner(i: number, rules: Rules): Hex {
-  return hexScale(DIRECTION_VECTORS[DIRECTIONS[i]], rules.boardRadius - rules.spawnInset);
+  return hexScale(DIRECTION_VECTORS[DIRECTIONS[i]], rules.gridRadius - rules.spawnInset);
 }
 
 function smooth(t: number): number {
@@ -35,9 +35,9 @@ function forestNoise(h: Hex, seed: number): number {
   return n1 * 0.75 + n2 * 0.25;
 }
 
-/** Returns the set of tree hex keys for this seed. */
-export function generateTrees(rules: Rules, seed: number): Set<string> {
-  const all = hexesInRange({ q: 0, r: 0 }, rules.boardRadius);
+/** Returns the set of forest hex keys for this seed. */
+export function generateForest(rules: Rules, seed: number): Set<string> {
+  const all = hexesInRange({ q: 0, r: 0 }, rules.gridRadius);
 
   // Sample noise on canonical hexes only, then pick the threshold that hits the target density.
   const scores = new Map<string, number>();
@@ -47,24 +47,24 @@ export function generateTrees(rules: Rules, seed: number): Set<string> {
     const ck = hexKey(c);
     let v = scores.get(ck);
     if (v === undefined) {
-      // A sprinkle of lone trees on top of clustered forest.
+      // Scattered lone forest hexes on top of the clustered forest.
       v = forestNoise(c, seed) + (hash2(c.q, c.r, seed + 7) > 0.985 ? 0.35 : 0);
       scores.set(ck, v);
     }
     values.push(v);
   }
   const sorted = [...values].sort((a, b) => b - a);
-  const threshold = sorted[Math.floor(sorted.length * rules.treeDensity)] ?? 1;
+  const threshold = sorted[Math.floor(sorted.length * rules.forestDensity)] ?? 1;
 
   const cleared = new Set<string>();
   for (let i = 0; i < 6; i++) {
     for (const h of hexesInRange(spawnCorner(i, rules), rules.spawnClearRadius)) cleared.add(hexKey(h));
   }
 
-  const trees = new Set<string>();
+  const forest = new Set<string>();
   all.forEach((h, i) => {
     const k = hexKey(h);
-    if (values[i] > threshold && !cleared.has(k)) trees.add(k);
+    if (values[i] > threshold && !cleared.has(k)) forest.add(k);
   });
-  return trees;
+  return forest;
 }

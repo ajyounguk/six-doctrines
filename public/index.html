@@ -45,7 +45,7 @@
         <button class="icon-btn" data-zoom="in" title="Zoom in (+)">+</button>
         <button class="icon-btn" data-zoom="out" title="Zoom out (−)">−</button>
         <button class="icon-btn" data-zoom="fit" title="Fit battlefield (F)">⤢</button>
-        <button class="icon-btn" data-zoom="follow" id="btn-follow" title="Follow my tank (T)" hidden>◎</button>
+        <button class="icon-btn" data-zoom="follow" id="btn-follow" title="Follow my proxy (T)" hidden>◎</button>
       </div>
 
       <canvas id="minimap" class="minimap" width="200" height="200" title="Click to jump"></canvas>
@@ -66,7 +66,7 @@
         <div class="controls">
           <button class="btn btn-primary" id="btn-start">Start match</button>
           <button class="btn" id="btn-pause">Pause</button>
-          <button class="btn" id="btn-bot">+ House bot</button>
+          <button class="btn" id="btn-bot">+ sparring bot</button>
         </div>
         <div class="controls controls-reset">
           <input id="seed-input" placeholder="seed (blank = random)" inputmode="numeric" />
@@ -81,8 +81,8 @@
       </section>
 
       <section class="panel">
-        <div class="panel-title"><span>Tanks</span><span class="muted" id="tank-count"></span></div>
-        <div id="tanks" class="tanks"></div>
+        <div class="panel-title"><span>Proxies</span><span class="muted" id="proxy-count"></span></div>
+        <div id="proxies" class="proxies"></div>
       </section>
 
       <section class="panel panel-log">

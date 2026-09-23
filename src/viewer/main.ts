@@ -1,7 +1,7 @@
 // The Six Doctrines viewer: connects over WebSocket as host (?host=KEY) or player (?player=TOKEN).
 
 import { hexDistance, hexLength, alignedDirection } from '../shared/hex.js';
-import type { Action, ClientMessage, GameEvent, HostCommand, ServerMessage, Snapshot, TankView, Welcome } from '../shared/protocol.js';
+import type { Action, ClientMessage, GameEvent, HostCommand, ServerMessage, Snapshot, ProxyView, Welcome } from '../shared/protocol.js';
 import type { Rules } from '../shared/rules.js';
 import { Renderer } from './renderer.js';
 
@@ -72,18 +72,18 @@ function start() {
     switch (m.type) {
       case 'welcome': {
         role = m.role;
-        myId = m.tankId;
+        myId = m.proxyId;
         rules = m.rules;
         tickLength = m.rules.turnTimeoutMs;
         links = m.playerLinks ?? {};
-        renderer.setBoard(m.rules.boardRadius, m.trees, m.explored);
+        renderer.setGrid(m.rules.gridRadius, m.forest, m.explored);
         lastEventsTick = m.snapshot.eventsTick; // don't replay old events on (re)connect
         $('log').innerHTML = '';
         setupChrome(m);
         applySnapshot(m.snapshot);
         if (firstWelcome) {
           firstWelcome = false;
-          const me = m.snapshot.tanks.find((t) => t.id === myId);
+          const me = m.snapshot.proxies.find((t) => t.id === myId);
           if (role === 'player' && me?.pos) {
             renderer.focusHex(me.pos, 20);
             renderer.setFollow(true);
@@ -109,15 +109,15 @@ function start() {
     const prev = snap;
     snap = s;
     clockOffset = s.serverNow - Date.now();
-    if (s.exploredDelta?.length || s.treesDelta?.length) renderer.reveal(s.exploredDelta, s.treesDelta);
+    if (s.exploredDelta?.length || s.forestDelta?.length) renderer.reveal(s.exploredDelta, s.forestDelta);
 
     // Play the last resolved tick's events once; move paths come from the events themselves.
     const fresh = s.eventsTick > lastEventsTick && s.eventsTick > 0;
     renderer.setSnapshot(s, myId);
     if (fresh) {
       lastEventsTick = s.eventsTick;
-      renderer.playEvents(s.events, s.tanks);
-      logEvents(s.eventsTick, s.events, s.tanks);
+      renderer.playEvents(s.events, s.proxies);
+      logEvents(s.eventsTick, s.events, s.proxies);
     }
     if (prev && prev.phase !== s.phase) logPhase(s);
     renderSidebar();
@@ -127,7 +127,7 @@ function start() {
   // ------------------------------------------------------------ chrome
 
   function setupChrome(w: Welcome) {
-    const me = w.snapshot.tanks.find((t) => t.id === w.tankId);
+    const me = w.snapshot.proxies.find((t) => t.id === w.proxyId);
     $('role-badge').innerHTML = role === 'host'
       ? `<span class="swatch" style="background:var(--accent)"></span><span class="who">Host console</span>`
       : `<span class="swatch" style="background:${me?.color}"></span><span class="who">${esc(me?.name ?? 'Player')}</span>`;
@@ -147,26 +147,26 @@ function start() {
     pill.className = `phase ${s.phase}`;
     pill.textContent = s.phase;
     $('hud-tick').textContent = s.phase === 'lobby' ? 'LOBBY' : `TICK ${s.tick} / ${rules.maxTicks}`;
-    $('tank-count').textContent = `${s.tanks.filter((t) => t.alive).length}/${s.tanks.length} alive`;
+    $('proxy-count').textContent = `${s.proxies.filter((t) => t.alive).length}/${s.proxies.length} alive`;
 
     if (role === 'host') {
-      $<HTMLButtonElement>('btn-start').disabled = s.phase !== 'lobby' || s.tanks.length === 0;
+      $<HTMLButtonElement>('btn-start').disabled = s.phase !== 'lobby' || s.proxies.length === 0;
       const pause = $<HTMLButtonElement>('btn-pause');
       pause.disabled = s.phase !== 'running' && s.phase !== 'paused';
       pause.textContent = s.phase === 'paused' ? 'Resume' : 'Pause';
-      $<HTMLButtonElement>('btn-bot').disabled = s.phase !== 'lobby' || s.tanks.length >= rules.maxPlayers;
+      $<HTMLButtonElement>('btn-bot').disabled = s.phase !== 'lobby' || s.proxies.length >= rules.maxPlayers;
     }
 
-    const tanks = [...s.tanks].sort((a, b) => Number(b.id === myId) - Number(a.id === myId));
-    const html = tanks.map((t) => tankCard(t, s)).join('');
-    const empties = s.phase === 'lobby' ? Math.max(0, rules.maxPlayers - s.tanks.length) : 0;
-    $('tanks').innerHTML = html + Array.from({ length: empties }, () => `<div class="tank-empty">Open slot</div>`).join('');
+    const proxies = [...s.proxies].sort((a, b) => Number(b.id === myId) - Number(a.id === myId));
+    const html = proxies.map((t) => proxyCard(t, s)).join('');
+    const empties = s.phase === 'lobby' ? Math.max(0, rules.maxPlayers - s.proxies.length) : 0;
+    $('proxies').innerHTML = html + Array.from({ length: empties }, () => `<div class="proxy-empty">Open slot</div>`).join('');
   }
 
-  function tankCard(t: TankView, s: Snapshot): string {
+  function proxyCard(t: ProxyView, s: Snapshot): string {
     const R = rules!;
     const me = t.id === myId;
-    const full = t.energy !== undefined; // we're allowed to see this tank's internals
+    const full = t.energy !== undefined; // we're allowed to see this proxy's internals
     let chip = '';
     if (!t.alive) chip = `<span class="chip dead">destroyed</span>`;
     else if (s.phase === 'finished') chip = t.id === s.winnerId ? `<span class="chip win">winner</span>` : t.placement ? `<span class="chip">#${t.placement}</span>` : '';
@@ -184,20 +184,20 @@ function start() {
     if (full && t.stats) {
       const act = describeAction(t.lastAction ?? null, s.phase);
       const laser = t.canFireAtTick !== undefined && t.canFireAtTick > s.tick ? `laser ${t.canFireAtTick - s.tick}t` : 'laser ready';
-      meta = `<div class="tank-meta"><span class="act">${esc(act)}</span><span>${laser}</span></div>
-        <div class="tank-meta"><span>K ${t.stats.kills} · dmg ${t.stats.damageDealt} · hit ${t.stats.shotsHit}/${t.stats.shotsFired}</span><span>⌛${t.stats.timeouts}</span></div>`;
+      meta = `<div class="proxy-meta"><span class="act">${esc(act)}</span><span>${laser}</span></div>
+        <div class="proxy-meta"><span>K ${t.stats.kills} · dmg ${t.stats.damageDealt} · hit ${t.stats.shotsHit}/${t.stats.shotsFired}</span><span>⌛${t.stats.timeouts}</span></div>`;
     } else if (!me && t.alive && s.phase !== 'lobby') {
-      meta = `<div class="tank-meta"><span>${t.seenTick !== undefined ? `last seen ${s.tick - t.seenTick} ticks ago` : 'not seen yet'}</span>${t.pos && snap ? `<span>${distanceFromMe(t.pos)}</span>` : ''}</div>`;
+      meta = `<div class="proxy-meta"><span>${t.seenTick !== undefined ? `last seen ${s.tick - t.seenTick} ticks ago` : 'not seen yet'}</span>${t.pos && snap ? `<span>${distanceFromMe(t.pos)}</span>` : ''}</div>`;
     }
 
     const actions = role === 'host' ? `
-      <div class="tank-actions">
+      <div class="proxy-actions">
         ${links[t.id] ? `<button class="btn" data-link="${t.id}">Copy player link</button>` : ''}
         ${s.phase === 'lobby' ? `<button class="btn btn-ghost" data-kick="${t.id}">Remove</button>` : ''}
       </div>` : '';
 
-    return `<div class="tank ${me ? 'me' : ''} ${t.alive ? '' : 'dead'}" style="--c:${t.color}" data-tank="${t.id}">
-      <div class="tank-head"><span class="tank-name">${esc(t.name)}${me ? ' <span class="muted small">(you)</span>' : ''}</span>${chip}</div>
+    return `<div class="proxy ${me ? 'me' : ''} ${t.alive ? '' : 'dead'}" style="--c:${t.color}" data-proxy="${t.id}">
+      <div class="proxy-head"><span class="proxy-name">${esc(t.name)}${me ? ' <span class="muted small">(you)</span>' : ''}</span>${chip}</div>
       ${bars}${meta}${actions}
     </div>`;
   }
@@ -209,7 +209,7 @@ function start() {
   };
 
   function distanceFromMe(pos: { q: number; r: number }) {
-    const me = snap?.tanks.find((t) => t.id === myId);
+    const me = snap?.proxies.find((t) => t.id === myId);
     if (!me?.pos) return '';
     const d = hexDistance(me.pos, pos);
     const dir = alignedDirection(me.pos, pos);
@@ -233,20 +233,20 @@ function start() {
     const s = snap!;
     const ov = $('overlay');
     if (s.phase === 'lobby') {
-      const key = JSON.stringify(s.tanks.map((t) => [t.id, t.name]));
+      const key = JSON.stringify(s.proxies.map((t) => [t.id, t.name]));
       if (!ov.hidden && key === lastLobbyKey) return;
       lastLobbyKey = key;
       const slots = Array.from({ length: rules!.maxPlayers }, (_, i) => {
-        const t = s.tanks[i];
+        const t = s.proxies[i];
         return t
           ? `<div class="slot filled" style="--c:${t.color}"><div class="hexdot"></div><span>${esc(t.name)}</span></div>`
           : `<div class="slot"><div class="hexdot"></div><span>open</span></div>`;
       }).join('');
       ov.innerHTML = `<div class="overlay-card">
-        <h2>Waiting for tanks</h2>
-        <p>${s.tanks.length} of ${rules!.maxPlayers} joined${role === 'host' ? ' · start when ready' : ' · the host starts the match'}</p>
+        <h2>Waiting for proxies</h2>
+        <p>${s.proxies.length} of ${rules!.maxPlayers} joined${role === 'host' ? ' · start when ready' : ' · the host starts the match'}</p>
         <div class="slots">${slots}</div>
-        ${role === 'host' ? `<button class="btn btn-primary" id="ov-start" ${s.tanks.length ? '' : 'disabled'}>Start match</button>` : ''}
+        ${role === 'host' ? `<button class="btn btn-primary" id="ov-start" ${s.proxies.length ? '' : 'disabled'}>Start match</button>` : ''}
       </div>`;
       ov.hidden = false;
       $('ov-start')?.addEventListener('click', () => host({ cmd: 'start' }));
@@ -254,8 +254,8 @@ function start() {
     }
     lastLobbyKey = '';
     if (s.phase === 'finished') {
-      const ranked = [...s.tanks].sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99));
-      const winner = s.tanks.find((t) => t.id === s.winnerId);
+      const ranked = [...s.proxies].sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99));
+      const winner = s.proxies.find((t) => t.id === s.winnerId);
       const rows = ranked.map((t) => `<div class="podium-row" style="--c:${t.color}">
         <span class="place">${t.placement ?? '–'}</span>
         <span>${esc(t.name)}${t.id === myId ? ' <span class="muted small">(you)</span>' : ''}</span>
@@ -278,8 +278,8 @@ function start() {
 
   // ------------------------------------------------------------ log
 
-  const nameOf = (id: string, tanks: TankView[]) => {
-    const t = tanks.find((x) => x.id === id);
+  const nameOf = (id: string, proxies: ProxyView[]) => {
+    const t = proxies.find((x) => x.id === id);
     return t ? `<span class="n" style="color:${t.color}">${esc(t.name)}</span>` : '<span class="n">?</span>';
   };
 
@@ -291,30 +291,30 @@ function start() {
     while (log.children.length > 300) log.lastElementChild!.remove();
   }
 
-  function logEvents(tick: number, events: GameEvent[], tanks: TankView[]) {
-    const n = (id: string) => nameOf(id, tanks);
+  function logEvents(tick: number, events: GameEvent[], proxies: ProxyView[]) {
+    const n = (id: string) => nameOf(id, proxies);
     for (const e of events) {
       switch (e.type) {
         case 'move':
-          logLine(tick, `${n(e.tankId)} moved ${e.direction} ${e.path.length - 1}/${e.requested}${e.blockedBy ? ` <span class="muted">(${e.blockedBy})</span>` : ''}`);
+          logLine(tick, `${n(e.proxyId)} moved ${e.direction} ${e.path.length - 1}/${e.requested}${e.blockedBy ? ` <span class="muted">(${e.blockedBy})</span>` : ''}`);
           break;
         case 'fire':
-          logLine(tick, `${n(e.tankId)} fired ${e.direction} p${e.power} → ${e.hit ? `<span class="hit">hit</span> ${n(e.hit)}` : `<span class="muted">${e.stoppedBy}</span>`}`);
+          logLine(tick, `${n(e.proxyId)} fired ${e.direction} p${e.power} → ${e.hit ? `<span class="hit">hit</span> ${n(e.hit)}` : `<span class="muted">${e.stoppedBy}</span>`}`);
           break;
         case 'damage':
-          logLine(tick, `${n(e.tankId)} <span class="hit">−${e.amount} hp</span>${e.by ? ` from ${n(e.by)}` : ` from the ${e.fromDirection}`} <span class="muted">(${e.hp} left)</span>`);
+          logLine(tick, `${n(e.proxyId)} <span class="hit">−${e.amount} hp</span>${e.by ? ` from ${n(e.by)}` : ` from the ${e.fromDirection}`} <span class="muted">(${e.hp} left)</span>`);
           break;
         case 'destroyed':
-          logLine(tick, `<span class="hit">✖</span> ${n(e.tankId)} destroyed by ${n(e.by)}`);
+          logLine(tick, `<span class="hit">✖</span> ${n(e.proxyId)} destroyed by ${n(e.by)}`);
           break;
         case 'pickup':
-          logLine(tick, `${n(e.tankId)} <span class="en">+${e.amount} energy</span>`);
+          logLine(tick, `${n(e.proxyId)} <span class="en">+${e.amount} energy</span>`);
           break;
         case 'scan':
-          logLine(tick, `${n(e.tankId)} scanned r${e.radius} <span class="muted">(−${e.cost})</span>`);
+          logLine(tick, `${n(e.proxyId)} scanned r${e.radius} <span class="muted">(−${e.cost})</span>`);
           break;
         case 'timeout':
-          logLine(tick, `${n(e.tankId)} <span class="muted">timed out</span>`);
+          logLine(tick, `${n(e.proxyId)} <span class="muted">timed out</span>`);
           break;
         case 'spawn':
           logLine(tick, `<span class="en">◆ ${e.cells.length} energy cells spawned</span>`);
@@ -357,11 +357,11 @@ function start() {
     const { hex: h } = info;
     const lines: string[] = [`<b>(${h.q}, ${h.r})</b> <span class="k">· ${hexLength(h)} from centre</span>`];
     if (!renderer.isExplored(h)) lines.push('<span class="k">unexplored</span>');
-    else if (renderer.isTree(h)) lines.push('🌲 tree <span class="k">blocks movement + lasers</span>');
+    else if (renderer.isForest(h)) lines.push('🌲 forest <span class="k">blocks movement + lasers</span>');
     for (let i = 0; i < snap.energy.length; i += 3) {
       if (snap.energy[i] === h.q && snap.energy[i + 1] === h.r) lines.push(`<span style="color:var(--accent)">◆ energy ${snap.energy[i + 2]}</span>`);
     }
-    for (const t of snap.tanks) {
+    for (const t of snap.proxies) {
       if (t.pos?.q === h.q && t.pos?.r === h.r) {
         const ghost = t.seenTick !== undefined && t.id !== myId;
         lines.push(`<span style="color:${t.color}">■ ${esc(t.name)}</span>${t.hp !== undefined ? ` <span class="k">${t.hp} hp</span>` : ''}${ghost ? ` <span class="k">seen ${snap.tick - t.seenTick!}t ago</span>` : ''}`);
@@ -412,14 +412,14 @@ function start() {
     $<HTMLInputElement>('seed-input').value = '';
   });
 
-  $('tanks').addEventListener('click', (e) => {
+  $('proxies').addEventListener('click', (e) => {
     const el = e.target as HTMLElement;
     const link = el.closest<HTMLElement>('[data-link]')?.dataset.link;
     const kick = el.closest<HTMLElement>('[data-kick]')?.dataset.kick;
     if (link) return copy(links[link], 'Player link copied');
-    if (kick) return host({ cmd: 'kick', tankId: kick });
-    const id = el.closest<HTMLElement>('[data-tank]')?.dataset.tank;
-    if (id) { renderer.setFollow(false); renderer.focusTank(id); }
+    if (kick) return host({ cmd: 'kick', proxyId: kick });
+    const id = el.closest<HTMLElement>('[data-proxy]')?.dataset.proxy;
+    if (id) { renderer.setFollow(false); renderer.focusProxy(id); }
   });
 
   document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((b) =>

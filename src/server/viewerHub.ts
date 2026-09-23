@@ -1,20 +1,20 @@
 // Streams the battlefield to browser viewers over WebSocket.
 //   host   – sees everything and controls the match (needs the host key)
-//   player – sees only what their tank knows (needs the tank's token)
+//   player – sees only what their proxy knows (needs the proxy's token)
 
 import type { Server } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
-import { GameError, type Tank } from '../engine/game.js';
+import { GameError, type ProxyDrone } from '../engine/game.js';
 import { parseKey } from '../shared/hex.js';
-import type { ClientMessage, GameEvent, ServerMessage, Snapshot, TankView, Welcome } from '../shared/protocol.js';
+import type { ClientMessage, GameEvent, ServerMessage, Snapshot, ProxyView, Welcome } from '../shared/protocol.js';
 import type { Match } from './match.js';
 
 interface Conn {
   ws: WebSocket;
   role: 'host' | 'player';
-  tankId: string | null;
+  proxyId: string | null;
   exploredSent: number;
-  treesSent: number;
+  forestSent: number;
 }
 
 const flatten = (keys: Iterable<string>): number[] => {
@@ -38,9 +38,9 @@ export function attachViewerHub(httpServer: Server, match: Match, opts: HubOptio
   };
 
   const playerLinks = () =>
-    Object.fromEntries([...match.game.tanks.values()].map((t) => [t.id, opts.playerUrl(t.token)]));
+    Object.fromEntries([...match.game.proxies.values()].map((t) => [t.id, opts.playerUrl(t.token)]));
 
-  function fullTank(t: Tank): TankView {
+  function fullProxy(t: ProxyDrone): ProxyView {
     const g = match.game;
     return {
       id: t.id, name: t.name, color: t.color, alive: t.alive,
@@ -61,18 +61,18 @@ export function attachViewerHub(httpServer: Server, match: Match, opts: HubOptio
     for (const [k, v] of g.energyCells) { const h = parseKey(k); energy.push(h.q, h.r, v); }
     return {
       tick: g.tick, phase: g.phase, deadline: match.deadline, serverNow: Date.now(),
-      tanks: [...g.tanks.values()].map(fullTank),
+      proxies: [...g.proxies.values()].map(fullProxy),
       energy, events: g.lastEvents, eventsTick: g.lastEventsTick, winnerId: g.winnerId,
     };
   }
 
   function playerSnapshot(c: Conn): Snapshot {
     const g = match.game;
-    const me = g.tanks.get(c.tankId!);
+    const me = g.proxies.get(c.proxyId!);
     const over = g.phase === 'finished';
-    const tanks = [...g.tanks.values()].map((t): TankView => {
-      if (t === me || over) return fullTank(t);
-      const seen = me?.seenTanks.get(t.id);
+    const proxies = [...g.proxies.values()].map((t): ProxyView => {
+      if (t === me || over) return fullProxy(t);
+      const seen = me?.seenProxies.get(t.id);
       return {
         id: t.id, name: t.name, color: t.color, alive: t.alive,
         pos: seen?.pos, hp: seen?.hp, seenTick: seen?.tick,
@@ -82,38 +82,38 @@ export function attachViewerHub(httpServer: Server, match: Match, opts: HubOptio
     const energy: number[] = [];
     if (me) for (const [k, v] of me.seenEnergy) { const h = parseKey(k); energy.push(h.q, h.r, v.value); }
 
-    // Only events this tank took part in; attackers stay anonymous.
+    // Only events this proxy took part in; attackers stay anonymous.
     const mine = (e: GameEvent): GameEvent | null => {
       if (!me) return null;
-      if (e.type === 'damage') return e.tankId === me.id ? { ...e, by: '' } : e.by === me.id ? e : null;
-      if (e.type === 'destroyed') return e.tankId === me.id || e.by === me.id ? e : null;
+      if (e.type === 'damage') return e.proxyId === me.id ? { ...e, by: '' } : e.by === me.id ? e : null;
+      if (e.type === 'destroyed') return e.proxyId === me.id || e.by === me.id ? e : null;
       if (e.type === 'spawn') return null;
-      if (e.type === 'fire') return e.tankId === me.id ? e : null;
-      return 'tankId' in e && e.tankId === me.id ? e : null;
+      if (e.type === 'fire') return e.proxyId === me.id ? e : null;
+      return 'proxyId' in e && e.proxyId === me.id ? e : null;
     };
     const events = g.lastEvents.map(mine).filter((e): e is GameEvent => e !== null);
 
     const exploredDelta = me ? flatten(me.exploredLog.slice(c.exploredSent)) : [];
-    const treesDelta = me ? flatten(me.knownTreesLog.slice(c.treesSent)) : [];
-    if (me) { c.exploredSent = me.exploredLog.length; c.treesSent = me.knownTreesLog.length; }
+    const forestDelta = me ? flatten(me.knownForestLog.slice(c.forestSent)) : [];
+    if (me) { c.exploredSent = me.exploredLog.length; c.forestSent = me.knownForestLog.length; }
 
     return {
       tick: g.tick, phase: g.phase, deadline: match.deadline, serverNow: Date.now(),
-      tanks, energy, events, eventsTick: g.lastEventsTick, winnerId: g.winnerId,
-      exploredDelta, treesDelta,
+      proxies, energy, events, eventsTick: g.lastEventsTick, winnerId: g.winnerId,
+      exploredDelta, forestDelta,
     };
   }
 
   function welcome(c: Conn): Welcome {
     const g = match.game;
-    const me = c.tankId ? g.tanks.get(c.tankId) : undefined;
-    if (me) { c.exploredSent = 0; c.treesSent = 0; }
-    const trees = c.role === 'host' ? flatten(g.trees) : me ? flatten(me.knownTreesLog) : [];
+    const me = c.proxyId ? g.proxies.get(c.proxyId) : undefined;
+    if (me) { c.exploredSent = 0; c.forestSent = 0; }
+    const forest = c.role === 'host' ? flatten(g.forest) : me ? flatten(me.knownForestLog) : [];
     const explored = c.role === 'player' && me ? flatten(me.exploredLog) : null;
-    if (me) { c.exploredSent = me.exploredLog.length; c.treesSent = me.knownTreesLog.length; }
+    if (me) { c.exploredSent = me.exploredLog.length; c.forestSent = me.knownForestLog.length; }
     return {
-      type: 'welcome', role: c.role, tankId: c.tankId, seed: g.seed, rules: g.rules,
-      trees, explored,
+      type: 'welcome', role: c.role, proxyId: c.proxyId, seed: g.seed, rules: g.rules,
+      forest, explored,
       snapshot: c.role === 'host' ? hostSnapshot() : playerSnapshot(c),
       mcpUrl: opts.mcpUrl,
       playerLinks: c.role === 'host' ? playerLinks() : undefined,
@@ -153,11 +153,11 @@ export function attachViewerHub(httpServer: Server, match: Match, opts: HubOptio
       if (msg.type === 'hello') {
         if (msg.role === 'host') {
           if (msg.key !== opts.hostKey) return send(ws, { type: 'error', message: 'Invalid host key.' });
-          conn = { ws, role: 'host', tankId: null, exploredSent: 0, treesSent: 0 };
+          conn = { ws, role: 'host', proxyId: null, exploredSent: 0, forestSent: 0 };
         } else {
           const t = match.findByToken(msg.token);
           if (!t) return send(ws, { type: 'error', message: 'Unknown player link. Ask the host for a new one.' });
-          conn = { ws, role: 'player', tankId: t.id, exploredSent: 0, treesSent: 0 };
+          conn = { ws, role: 'player', proxyId: t.id, exploredSent: 0, forestSent: 0 };
         }
         conns.add(conn);
         send(ws, welcome(conn));
@@ -172,7 +172,7 @@ export function attachViewerHub(httpServer: Server, match: Match, opts: HubOptio
             case 'pause': match.pause(); break;
             case 'resume': match.resume(); break;
             case 'reset': match.reset(msg.seed); break;
-            case 'kick': match.kick(msg.tankId); break;
+            case 'kick': match.kick(msg.proxyId); break;
             case 'addBot': match.join(`Bot ${botName()}`, { isBot: true }); break;
           }
         } catch (e) {
@@ -184,7 +184,7 @@ export function attachViewerHub(httpServer: Server, match: Match, opts: HubOptio
   });
 
   const BOT_NAMES = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
-  const botName = () => BOT_NAMES.find((n) => ![...match.game.tanks.values()].some((t) => t.name === `Bot ${n}`)) ?? 'Zulu';
+  const botName = () => BOT_NAMES.find((n) => ![...match.game.proxies.values()].some((t) => t.name === `Bot ${n}`)) ?? 'Zulu';
 
   return wss;
 }

@@ -1,17 +1,17 @@
-// Turn controller. Owns the clock around a Game: opens ticks, waits for every live tank
+// Turn controller. Owns the clock around a Game: opens ticks, waits for every live proxy
 // to act (or time out), resolves, and tells everyone what happened.
 
-import { Game, GameError, type Tank, type TankReport, type TickResult } from '../engine/game.js';
+import { Game, GameError, type ProxyDrone, type ProxyReport, type TickResult } from '../engine/game.js';
 import { randomSeed } from '../engine/rng.js';
 import type { Action } from '../shared/protocol.js';
 import type { Rules } from '../shared/rules.js';
 import { decideBotAction } from '../bot/brain.js';
-import { botInputFromTank } from '../bot/fromTank.js';
+import { botInputFromProxy } from '../bot/fromProxy.js';
 
 type Listener = (result?: TickResult) => void;
 
 interface Waiter {
-  resolve: (r: TankReport) => void;
+  resolve: (r: ProxyReport) => void;
   reject: (e: Error) => void;
 }
 
@@ -44,18 +44,18 @@ export class Match {
 
   // ---------------------------------------------------------------- lobby
 
-  join(name: string, opts: { isBot?: boolean } = {}): Tank {
+  join(name: string, opts: { isBot?: boolean } = {}): ProxyDrone {
     const t = this.game.join(name, opts);
     this.emit();
     return t;
   }
 
-  findByToken(token: string): Tank | undefined {
-    return [...this.game.tanks.values()].find((t) => t.token === token);
+  findByToken(token: string): ProxyDrone | undefined {
+    return [...this.game.proxies.values()].find((t) => t.token === token);
   }
 
-  kick(tankId: string) {
-    this.game.leave(tankId);
+  kick(proxyId: string) {
+    this.game.leave(proxyId);
     this.emit();
   }
 
@@ -100,7 +100,7 @@ export class Match {
     this.deadline = null;
     for (const w of this.waiters.values()) w.reject(new GameError('The host reset the match. Call wait_for_start.'));
     this.waiters.clear();
-    const old = [...this.game.tanks.values()].sort((a, b) => a.joinOrder - b.joinOrder);
+    const old = [...this.game.proxies.values()].sort((a, b) => a.joinOrder - b.joinOrder);
     this.game = new Game(this.rules, seed);
     // Same ids and tokens, so bound MCP sessions and player links keep working.
     for (const t of old) this.game.join(t.name, { isBot: t.isBot, token: t.token, id: t.id });
@@ -109,10 +109,10 @@ export class Match {
 
   // ---------------------------------------------------------------- turns
 
-  /** Queues an action and resolves with this tank's report once the tick resolves. */
-  submit(tankId: string, action: Action): Promise<TankReport> {
-    this.game.submit(tankId, action);
-    const p = new Promise<TankReport>((resolve, reject) => this.waiters.set(tankId, { resolve, reject }));
+  /** Queues an action and resolves with this proxy's report once the tick resolves. */
+  submit(proxyId: string, action: Action): Promise<ProxyReport> {
+    this.game.submit(proxyId, action);
+    const p = new Promise<ProxyReport>((resolve, reject) => this.waiters.set(proxyId, { resolve, reject }));
     this.emit();
     this.maybeResolve();
     return p;
@@ -128,9 +128,9 @@ export class Match {
   }
 
   private runBots() {
-    for (const t of this.game.aliveTanks()) {
+    for (const t of this.game.aliveProxies()) {
       if (!t.isBot || this.game.hasSubmitted(t.id)) continue;
-      const action = decideBotAction(botInputFromTank(this.game, t));
+      const action = decideBotAction(botInputFromProxy(this.game, t));
       try {
         this.game.submit(t.id, action);
       } catch {

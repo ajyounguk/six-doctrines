@@ -120,22 +120,22 @@ input:focus { outline: none; border-color: var(--accent); }
 .side-foot { display: flex; gap: 12px; flex-wrap: wrap; padding: 10px 16px; border-top: 1px solid var(--line); }
 kbd { border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; color: var(--text); }
 
-/* ---------- tank cards ---------- */
-.tanks { display: grid; gap: 8px; }
-.tank {
+/* ---------- proxy cards ---------- */
+.proxies { display: grid; gap: 8px; }
+.proxy {
   --c: var(--accent);
   position: relative; padding: 10px 12px 10px 14px; border-radius: var(--radius);
   background: var(--panel-2); border: 1px solid var(--line); cursor: pointer;
   transition: border-color .15s, opacity .2s;
 }
-.tank::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px;
+.proxy::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px;
   border-radius: 0 3px 3px 0; background: var(--c); box-shadow: 0 0 10px var(--c); }
-.tank:hover { border-color: var(--line-2); }
-.tank.me { border-color: color-mix(in srgb, var(--c) 55%, transparent); }
-.tank.dead { opacity: .55; }
-.tank.dead::before { background: var(--faint); box-shadow: none; }
-.tank-head { display: flex; align-items: center; gap: 8px; }
-.tank-name { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proxy:hover { border-color: var(--line-2); }
+.proxy.me { border-color: color-mix(in srgb, var(--c) 55%, transparent); }
+.proxy.dead { opacity: .55; }
+.proxy.dead::before { background: var(--faint); box-shadow: none; }
+.proxy-head { display: flex; align-items: center; gap: 8px; }
+.proxy-name { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chip { font: 600 10px var(--mono); letter-spacing: .06em; text-transform: uppercase;
   padding: 2px 6px; border-radius: 4px; background: var(--bg); color: var(--muted); white-space: nowrap; }
 .chip.ready { color: var(--ok); }
@@ -153,11 +153,11 @@ kbd { border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 
 .bar-fill.hp { background: linear-gradient(90deg, #ff4d5e, #ffb020 50%, #3ddc97); background-size: 300% 100%; }
 .bar-fill.en { background: linear-gradient(90deg, #1b8fd6, var(--accent)); }
 .bar .val { text-align: right; color: var(--text); }
-.tank-meta { display: flex; justify-content: space-between; gap: 8px; font: 11px var(--mono); color: var(--muted); }
-.tank-meta .act { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tank-actions { display: flex; gap: 6px; margin-top: 8px; }
-.tank-actions .btn { padding: 4px 8px; font-size: 11px; }
-.tank-empty { padding: 14px; border: 1px dashed var(--line-2); border-radius: var(--radius);
+.proxy-meta { display: flex; justify-content: space-between; gap: 8px; font: 11px var(--mono); color: var(--muted); }
+.proxy-meta .act { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proxy-actions { display: flex; gap: 6px; margin-top: 8px; }
+.proxy-actions .btn { padding: 4px 8px; font-size: 11px; }
+.proxy-empty { padding: 14px; border: 1px dashed var(--line-2); border-radius: var(--radius);
   color: var(--faint); text-align: center; font-size: 12px; }
 
 /* ---------- log ---------- */

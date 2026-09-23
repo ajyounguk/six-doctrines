@@ -1,4 +1,4 @@
-// Example MCP agent: connects to The Six Doctrines over MCP and plays with the house-bot brain.
+// Example MCP agent: connects to The Six Doctrines over MCP and plays with the sparring-bot brain.
 // Handy for testing, and a template for wiring up your own agent.
 //
 //   npm run bot -- --name Rover --url http://localhost:8080/mcp
@@ -35,8 +35,8 @@ const maxMove = num(rules.actions.move, /Up to (\d+)/);
 const maxPower = num(rules.actions.fire, /Power 1-(\d+)/);
 const maxScan = num(rules.actions.scan, /radius \(1-(\d+)\)/);
 
-// The brain wants remembered trees as a Set; keep our own copy from known_map.
-const trees = new Set<string>();
+// The brain wants remembered forest as a Set; keep our own copy from known_map.
+const forest = new Set<string>();
 let lastScanTick = -99;
 
 for (;;) {
@@ -47,7 +47,7 @@ for (;;) {
     break;
   }
   const known = await call('known_map', { radius: 40 });
-  for (const [q, r] of known.trees) trees.add(`${q},${r}`);
+  for (const [q, r] of known.forest) forest.add(`${q},${r}`);
 
   const input: BotInput = {
     tick: match.tick,
@@ -56,10 +56,10 @@ for (;;) {
     energy: you.energy,
     laserReady: you.laser_ready,
     maxMove, maxPower, maxScanRadius: maxScan,
-    boardRadius: match.board_radius,
-    knownTrees: trees,
+    gridRadius: match.grid_radius,
+    knownForest: forest,
     energyCells: known.energy.map((e: any) => ({ at: { q: e.q, r: e.r }, value: e.value })),
-    enemies: known.tanks.map((t: any) => ({ at: { q: t.q, r: t.r }, seenTick: match.tick - t.seen_ticks_ago })),
+    enemies: known.proxies.map((t: any) => ({ at: { q: t.q, r: t.r }, seenTick: match.tick - t.seen_ticks_ago })),
     lastScanTick,
     seed: [...name].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) | 0,
   };

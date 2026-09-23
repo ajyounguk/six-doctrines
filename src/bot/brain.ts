@@ -1,6 +1,6 @@
-// A deliberately simple house bot: shoot what's lined up, chase energy, scan when blind,
+// A deliberately simple sparring bot: shoot what's lined up, chase energy, scan when blind,
 // otherwise head for the centre. Useful as a sparring partner and as a reference agent.
-// It only uses what its own tank knows, the same information an AI agent gets.
+// It only uses what its own proxy knows, the same information an AI agent gets.
 
 import {
   DIRECTIONS, type Direction, type Hex,
@@ -17,12 +17,12 @@ export interface BotInput {
   maxMove: number;
   maxPower: number;
   maxScanRadius: number;
-  boardRadius: number;
-  knownTrees: Set<string>;
+  gridRadius: number;
+  knownForest: Set<string>;
   energyCells: { at: Hex; value: number }[];
   enemies: { at: Hex; seenTick: number }[];
   lastScanTick: number;
-  /** Per-tank number so bots pick different exploration waypoints. */
+  /** Per-proxy number so bots pick different exploration waypoints. */
   seed: number;
 }
 
@@ -70,7 +70,7 @@ function routeToward(b: BotInput, target: Hex, budget: number, goalRadius = 0): 
   if (budget < 1) return null;
   const TURN = 4;
   const MAX_EXPANSIONS = 6000;
-  const blocked = (h: Hex) => hexLength(h) > b.boardRadius || b.knownTrees.has(hexKey(h));
+  const blocked = (h: Hex) => hexLength(h) > b.gridRadius || b.knownForest.has(hexKey(h));
   interface Node { h: Hex; dir: number; g: number; first: number; leg: number; turned: boolean }
   const best = new Map<number, number>();
   const heap = new Heap<Node>();
@@ -148,7 +148,7 @@ export function decideBotAction(b: BotInput): Action {
   if (budget >= 3) {
     const epoch = Math.floor(b.tick / 12);
     const ang = hash01(epoch, b.seed) * Math.PI * 2;
-    const dist = b.boardRadius * (0.2 + 0.5 * hash01(b.seed, epoch));
+    const dist = b.gridRadius * (0.2 + 0.5 * hash01(b.seed, epoch));
     const wp = { q: Math.round(Math.cos(ang) * dist / 1.5), r: 0 };
     wp.r = Math.round(Math.sin(ang) * dist / Math.sqrt(3) - wp.q / 2);
     const mv = routeToward(b, wp, budget, 4);

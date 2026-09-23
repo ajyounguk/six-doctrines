@@ -24,7 +24,7 @@ const SEED = num(env.SEED, randomSeed());
 
 const rules: Rules = {
   ...DEFAULT_RULES,
-  boardRadius: num(env.BOARD_RADIUS, DEFAULT_RULES.boardRadius),
+  gridRadius: num(env.GRID_RADIUS, DEFAULT_RULES.gridRadius),
   turnTimeoutMs: num(env.TURN_TIMEOUT_MS, DEFAULT_RULES.turnTimeoutMs),
   minTickMs: num(env.MIN_TICK_MS, DEFAULT_RULES.minTickMs),
   maxTicks: num(env.MAX_TICKS, DEFAULT_RULES.maxTicks),
@@ -49,7 +49,7 @@ app.post('/mcp', async (req, res) => {
       res.status(400).json({ jsonrpc: '2.0', error: { code: -32000, message: 'No valid MCP session. Re-initialise.' }, id: null });
       return;
     }
-    const state: SessionState = { tankId: null };
+    const state: SessionState = { proxyId: null };
     const t: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
       onsessioninitialized: (id) => { sessions.set(id, t); },
@@ -79,7 +79,7 @@ attachViewerHub(httpServer, match, { hostKey: HOST_KEY, mcpUrl: `${PUBLIC_URL}/m
 
 httpServer.listen(PORT, HOST, () => {
   const line = '─'.repeat(64);
-  console.log(`\n${line}\n  THE SIX DOCTRINES  ·  seed ${SEED}  ·  board radius ${rules.boardRadius}\n${line}`);
+  console.log(`\n${line}\n  THE SIX DOCTRINES  ·  seed ${SEED}  ·  grid radius ${rules.gridRadius}\n${line}`);
   console.log(`  Host view   ${PUBLIC_URL}/?host=${HOST_KEY}`);
   console.log(`  MCP         ${PUBLIC_URL}/mcp`);
   console.log(`  Listening   ${HOST}:${PORT}${HOST === '127.0.0.1' ? '  (set HOST=0.0.0.0 to let players on your network in)' : ''}`);

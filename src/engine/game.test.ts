@@ -3,18 +3,18 @@ import assert from 'node:assert/strict';
 import { canonicalHex, hexKey, symmetricImages, alignedDirection } from '../shared/hex.js';
 import { DEFAULT_RULES, type Rules } from '../shared/rules.js';
 import { decideBotAction } from '../bot/brain.js';
-import { botInputFromTank } from '../bot/fromTank.js';
+import { botInputFromProxy } from '../bot/fromProxy.js';
 import { Game } from './game.js';
-import { generateTrees, spawnCorner } from './map.js';
+import { generateForest, spawnCorner } from './map.js';
 
-const small: Rules = { ...DEFAULT_RULES, boardRadius: 40, spawnInset: 5 };
+const small: Rules = { ...DEFAULT_RULES, gridRadius: 40, spawnInset: 5 };
 
 test('terrain is identical under all 12 hex symmetries', () => {
-  const trees = generateTrees(small, 1234);
-  assert.ok(trees.size > 0);
-  for (const k of trees) {
+  const forest = generateForest(small, 1234);
+  assert.ok(forest.size > 0);
+  for (const k of forest) {
     const [q, r] = k.split(',').map(Number);
-    for (const img of symmetricImages({ q, r })) assert.ok(trees.has(hexKey(img)), `missing mirror of ${k}`);
+    for (const img of symmetricImages({ q, r })) assert.ok(forest.has(hexKey(img)), `missing mirror of ${k}`);
   }
 });
 
@@ -32,7 +32,7 @@ test('in-line detection', () => {
 });
 
 test('head-on lasers land simultaneously', () => {
-  const g = new Game({ ...small, treeDensity: 0 }, 1);
+  const g = new Game({ ...small, forestDensity: 0 }, 1);
   const a = g.join('A'), b = g.join('B');
   g.start();
   a.pos = { q: 0, r: 0 };
@@ -47,8 +47,8 @@ test('head-on lasers land simultaneously', () => {
   assert.equal(res.reports.get(a.id)!.hitsTaken[0].fromDirection, 'N');
 });
 
-test('two tanks entering the same hex both stop', () => {
-  const g = new Game({ ...small, treeDensity: 0 }, 1);
+test('two proxies entering the same hex both stop', () => {
+  const g = new Game({ ...small, forestDensity: 0 }, 1);
   const a = g.join('A'), b = g.join('B');
   g.start();
   // Both want (-1,-1) on the first sub-step.
@@ -84,8 +84,8 @@ function playBots(seed: number) {
   for (const n of ['A', 'B', 'C', 'D']) g.join(n, { isBot: true });
   g.start();
   while (g.phase === 'running') {
-    for (const t of g.aliveTanks()) {
-      try { g.submit(t.id, decideBotAction(botInputFromTank(g, t))); }
+    for (const t of g.aliveProxies()) {
+      try { g.submit(t.id, decideBotAction(botInputFromProxy(g, t))); }
       catch { g.submit(t.id, { type: 'wait' }); }
     }
     g.resolveTick();
@@ -98,5 +98,5 @@ test('bot match runs to completion and is deterministic', () => {
   assert.equal(g1.phase, 'finished');
   assert.equal(g1.tick, g2.tick);
   assert.equal(g1.winnerId, g2.winnerId);
-  assert.deepEqual([...g1.tanks.values()].map((t) => t.stats), [...g2.tanks.values()].map((t) => t.stats));
+  assert.deepEqual([...g1.proxies.values()].map((t) => t.stats), [...g2.proxies.values()].map((t) => t.stats));
 });
