@@ -2,12 +2,19 @@
 //   host   – sees everything and controls the match (needs the host key)
 //   player – sees only what their proxy knows (needs the proxy's token)
 
-import type { Server } from 'node:http';
+import { createHash, timingSafeEqual } from 'node:crypto';
+import type { IncomingMessage, Server } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { GameError, type ProxyDrone } from '../engine/game.js';
 import { parseKey } from '../shared/hex.js';
 import type { ClientMessage, GameEvent, ServerMessage, Snapshot, ProxyView, Welcome } from '../shared/protocol.js';
+import { isAllowedRequest } from './hosts.js';
 import type { Match } from './match.js';
+
+// Viewer messages are tiny; ws would otherwise accept up to 100 MiB from anyone before they authenticate.
+const MAX_MESSAGE_BYTES = 16 * 1024;
+
+const digest = (s: string) => createHash('sha256').update(s).digest();
 
 interface Conn {
   ws: WebSocket;
@@ -27,11 +34,21 @@ export interface HubOptions {
   hostKey: string;
   mcpUrl: string;
   playerUrl: (token: string) => string;
+  allowedHosts: string[];
 }
 
 export function attachViewerHub(httpServer: Server, match: Match, opts: HubOptions) {
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  const wss = new WebSocketServer({
+    server: httpServer,
+    path: '/ws',
+    maxPayload: MAX_MESSAGE_BYTES,
+    // Browsers don't apply same-origin rules to WebSockets, so check Host and Origin here.
+    verifyClient: ({ req, origin }: { req: IncomingMessage; origin?: string }) => isAllowedRequest(opts.allowedHosts, req.headers.host, origin || undefined),
+  });
   const conns = new Set<Conn>();
+
+  const hostKeyDigest = digest(opts.hostKey);
+  const isHostKey = (k: unknown) => typeof k === 'string' && timingSafeEqual(digest(k), hostKeyDigest);
 
   const send = (ws: WebSocket, msg: ServerMessage) => {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
@@ -147,13 +164,16 @@ export function attachViewerHub(httpServer: Server, match: Match, opts: HubOptio
 
   wss.on('connection', (ws) => {
     let conn: Conn | null = null;
+    // Without a listener, a malformed or oversized frame from any client crashes the whole server.
+    // ws closes the socket itself (1002/1009); 'close' below cleans up.
+    ws.on('error', () => {});
     ws.on('message', (raw) => {
       let msg: ClientMessage;
       try { msg = JSON.parse(String(raw)); } catch { return; }
 
       if (msg.type === 'hello') {
         if (msg.role === 'host') {
-          if (msg.key !== opts.hostKey) return send(ws, { type: 'error', message: 'Invalid host key.' });
+          if (!isHostKey(msg.key)) return send(ws, { type: 'error', message: 'Invalid host key.' });
           conn = { ws, role: 'host', proxyId: null, exploredSent: 0, forestSent: 0 };
         } else {
           const t = match.findByToken(msg.token);

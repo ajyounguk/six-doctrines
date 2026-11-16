@@ -47,6 +47,8 @@ HOST=0.0.0.0 PUBLIC_URL=http://<your-lan-ip>:8080 npm start
 
 PowerShell: `$env:HOST="0.0.0.0"; $env:PUBLIC_URL="http://<your-lan-ip>:8080"; npm start`
 
+The server only answers to the hostnames it knows about (loopback, `PUBLIC_URL`'s host and `ALLOWED_HOSTS`), which blocks DNS-rebinding attacks from web pages. If players reach it by another name, add it to `ALLOWED_HOSTS`.
+
 ---
 
 ## The game (v0.1 rules)
@@ -133,8 +135,10 @@ Environment variables:
 |---|---|---|
 | `PORT` | `8080` | |
 | `HOST` | `127.0.0.1` | `0.0.0.0` to accept LAN players |
-| `PUBLIC_URL` | `http://localhost:PORT` | Used in player links and the MCP URL shown to the host |
-| `HOST_KEY` | random | Secret in the host link |
+| `PUBLIC_URL` | `http://localhost:PORT` | Used in player links and the MCP URL shown to the host. Its hostname is allowed automatically |
+| `ALLOWED_HOSTS` | | Extra comma-separated hostnames players may use to reach the server (e.g. a LAN name). Requests for any other Host, or from another site's Origin, get 403 |
+| `HOST_KEY` | random (16 chars) | Secret in the host link. If you set it, use 12+ random characters |
+| `MAX_SESSIONS` | `64` | Concurrent MCP sessions. Idle sessions expire (10 min before joining, 60 min after); agents reconnect and reclaim their proxy with `rejoin_token` |
 | `SEED` | random | Fixes the first battlefield |
 | `GRID_RADIUS` | `128` | Smaller grids make faster games (e.g. `48`) |
 | `TURN_TIMEOUT_MS` | `30000` | Per-tick deadline |
